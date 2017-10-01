@@ -6,13 +6,6 @@
     The dynamic factor model is a well established modeling strategy when we face a large number of time series which makes it impossible to use standard multivariate techniques such as VARIMA models. Those time series could share some common factor but also the factors can have a group structure. Ando and Bai (2016) propose an iterative procedure for estimating a factor model with grouped factor structures. The starting step of the procedure relies on k-means algorithm and Euclidean metric on the original time series. It is known that Euclidean distance does not take into account the dependence among the individuals (time series in our case). In this project, we will consider other algorithms and metrics as starting step of the Ando and Bai’s procedure. We will evaluate the forecasting performance of the original and the proposed modification. The evaluation will consist of an extensive simulation study and its application to time series of the electricity market.
 *** References:
     Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A panel data approach with high-dimensional predictors and factor structures. To appear at JASA. Available at: http://dx.doi.org/10.1080/01621459.2016.1195743
-
-** Short-term air pollution forecasting in Madrid
-*** Professor: Francisco Javier Nogales Martín (fjnm@est-econ.uc3m.es) and Carlos Ruíz Mora (caruizm@est-econ.uc3m.es).
-*** Summary: 
-    Develop an automatic tool to predict hourly Madrid air-pollution on a daily basis, using time series and machine learning tools. The tool must be able to connect daily with the data bases, perform the forecasts, compute the associated errors, and generate a convenient output (ideally on a web server).
-*** Source: Open Data Madrid.
-
 ** Machine learning for time series forecasting
 *** Profesor: Carlo Sguera (csguera@est-econ.uc3m.es).
 *** Summary: 
@@ -24,6 +17,11 @@
     25 years of time series forecasting. International journal of forecasting, 22(3):443–473. 
     M3 Competition (2008). http://forecasters.org/resources/time-series-data/m3-competition/.
 
+** Short-term air pollution forecasting in Madrid
+*** Professor: Francisco Javier Nogales Martín (fjnm@est-econ.uc3m.es) and Carlos Ruíz Mora (caruizm@est-econ.uc3m.es).
+*** Summary: 
+    Develop an automatic tool to predict hourly Madrid air-pollution on a daily basis, using time series and machine learning tools. The tool must be able to connect daily with the data bases, perform the forecasts, compute the associated errors, and generate a convenient output (ideally on a web server).
+*** Source: Open Data Madrid.
 ** Hourly electricity consumption in Smart grids
 *** Professor: Francisco Javier Nogales Martín (fjnm@est-econ.uc3m.es) and Carlos Ruíz Mora (caruizm@est-econ.uc3m.es).
 *** Summary: 
