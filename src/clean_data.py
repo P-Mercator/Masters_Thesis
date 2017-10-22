@@ -4,7 +4,8 @@ from os.path import join
 import glob
 from scipy.stats.mstats import zscore
 from sklearn.preprocessing import StandardScaler
-import helpers
+import src.helpers as helpers
+
 """
 from importlib import reload
 import PyQt5
@@ -12,11 +13,12 @@ import matplotlib.pyplot as plt
 %matplotlib qt5
 """
 
-data_path = "../data"
+data_path = "data"
+
 data = pd.concat([
     pd.read_table(
-        file, encoding="iso8859_15", delimiter="\t",
-        index_col=False).iloc[:-1, :]
+        file, encoding="iso8859_15", delimiter="\t", engine="python",
+        index_col=False).iloc[1:-1, :]
     for file in glob.glob(join(data_path, "*.xls"))
 ])
 
