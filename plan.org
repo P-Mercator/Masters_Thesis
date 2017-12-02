@@ -27,12 +27,21 @@
 
 
   #+BEGIN_SRC ipython :session
-  import pandas as pd
-  import numpy as np
-  from os.path import join
-  import glob
-  from scipy.stats.mstats import zscore
-  import src.helpers as helpers
+    import glob
+    import inspect
+    from os.path import join
+
+    import itertools
+    import pickle
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    import scipy.cluster.hierarchy as hcl
+    from scipy.spatial.distance import squareform
+    from scipy.stats.mstats import zscore
+    from statsmodels.tsa.stattools import adfuller, pacf, acf
+
+    import src.helpers as helpers
   #+END_SRC
 
   #+RESULTS:
@@ -41,16 +50,15 @@
   consolidated 2016 data as well as the running 2017 data. 
 
 
-  #+BEGIN_SRC ipython :session
-    data_path = "data"
+  #+BEGIN_SRC ipython :session :async t
+data_path = "data"
 
-    data = pd.concat([
-        pd.read_table(
-            # file, encoding="mac_roman", delimiter="\t", engine="python",
-            file, encoding="iso8859_1", delimiter="\t", engine="python",
-            index_col=False).iloc[1:-1, :]
-        for file in glob.glob(join(data_path, "*.xls"))
-    ])
+data = pd.concat([
+    pd.read_table(
+        file, encoding="iso8859_15", delimiter="\t", engine="python",
+        index_col=False).iloc[1:-1, :]
+    for file in glob.glob(join(data_path, "*.xls"))
+])
   #+END_SRC
 
   #+RESULTS:
@@ -63,11 +71,14 @@
   30 minutes. I have therefore removed all those empty rows.
 
   #+BEGIN_SRC ipython :session
-  data = data.reset_index(drop=True)
-  data["Consommation"] = pd.to_numeric(data["Consommation"], errors='coerce')
-  data = data.loc[~data["Consommation"].isnull(), :]
-  data["Datetime"] = pd.to_datetime(
-      (data["Date"] + '_' + data["Heures"]).apply(str), format='%Y-%m-%d_%H:%M')
+data = data.reset_index(drop=True)
+data["Consommation"] = pd.to_numeric(data["Consommation"], errors='coerce')
+data = data.loc[~data["Consommation"].isnull(), :]
+data["Datetime"] = pd.to_datetime(
+    (data["Date"] + '_' + data["Heures"]).apply(str), format='%Y-%m-%d_%H:%M')
+data["Date"] = pd.to_datetime((data["Date"]).apply(str), format='%Y-%m-%d')
+data["Heures"] = pd.to_datetime((data["Heures"]).apply(str), format='%H:%M',
+                                infer_datetime_format=False).dt.time
   #+END_SRC
 
   #+RESULTS:
@@ -78,16 +89,12 @@
   the rows are the 30 minutes electricity consumption measurements.
 
   #+BEGIN_SRC ipython :session
-    consommation = pd.pivot_table(data, values='Consommation',
-                                  index='Datetime', columns="P\351rim\350tre")
-    consommation.columns.name = "Perimetre"
-    consommation = consommation.resample("30T").mean()
-    consommation = consommation.drop('France', axis=1)
+consommation = pd.pivot_table(
+    data, values='Consommation', index='Datetime', columns=['Périmètre'])
+consommation = consommation.drop('France', axis=1)
   #+END_SRC
 
   #+RESULTS:
-  :RESULTS:
-  :END:
 
 
 ** Quality control
@@ -96,105 +103,167 @@
    regions that did not have 50% of the data.
 
   #+BEGIN_SRC ipython :session
-  # Good series have more than 50% data
-  good_series = [
-      consommation.iloc[:, i].isnull().sum() / consommation.iloc[:, i].shape[0] <
-      0.50 for i in range(consommation.shape[1])
-  ]
-  consommation = consommation.loc[:, good_series]
+  # Good series have more than 99% data
+good_series = [
+    consommation.iloc[:, i].isnull().sum() / consommation.iloc[:, i].shape[0] <
+    0.99 for i in range(consommation.shape[1])
+]
+consommation = consommation.loc[:, good_series]
   #+END_SRC
 
   #+RESULTS:
-  :RESULTS:
-  :END:
+
+#+BEGIN_SRC ipython :session :file  :exports both 
+start_bad_date = np.unique(np.where(consommation.isnull())[0])[0]
+bad_date = consommation.index[start_bad_date]
+consommation = consommation.iloc[:start_bad_date-1, :]
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session :file  :exports both :results raw drawer
+bad_date.date()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: datetime.date(2016, 2, 29)
+:END:
+
+
  
   Furthermore, the data now contains some weird outliers:
     
-  [[file:img/outliers.png]]
 
   To get rid of those, I have removed those outliers by using a running median
   of 30 days and a maximum difference of 2.5 standard deviation of the time
   series compared to that median. Then, I have replaced the null values using
   linear interpolation.
 
-  #+BEGIN_SRC ipython :session
-  def clean_series(ts):
-      ts = remove_outliers(ts)
-      ts = ts.interpolate("time")
-      return ts
-
-
-  def remove_outliers(ts):
-      """
-      Remove values where absolute difference with rolling median is more 
-      than 2.5 standard deviation
-      """
-      return ts[abs(ts - ts.rolling('30d').median()) < 2.5 * ts.std()]
-
-    
-  # Remove outliers and interpolate missing values
-  consommation = consommation.apply(clean_series, axis=0).resample('30T').mean()
+  #+BEGIN_SRC ipython :session :ipyfile ./img/plotSeries.png :exports both :results raw drawer :async t
+  %matplotlib inline
+fig, ax = plt.subplots(4, 3, sharex=True, sharey=True)
+i = 0
+row = 0
+for column in consommation.columns:
+    col = i % 3
+    consommation[column].plot(ax=ax[row, col])
+    i += 1
+    if col == 2:
+        row += 1
   #+END_SRC
 
   #+RESULTS:
+  :RESULTS:
+  [[file:./img/plotSeries.png]]
+  :END:
 
-  [[file:img/outliers_removed.png]]
 
     
   To get stationary data with a mean approaching 0 and a variance approaching 1, I have calculated the moving
   difference between measurements and converted those values to zscore.
 
-  #+BEGIN_SRC ipython :session
-  consommation = consommation.diff().fillna(0).apply(zscore, axis=0)
-  #+END_SRC
+#+BEGIN_SRC ipython :session :exports none
+consommation_backup = consommation.copy()
+consommation = consommation_backup.copy()
+#+END_SRC
 
-  #+RESULTS:
+#+RESULTS:
 
-  #+BEGIN_SRC ipython :session :results raw drawer
-  consommation.var()
+#+BEGIN_SRC ipython :session :file  :exports both
+consommation["date"] = consommation.index.date
+consommation["time"] = consommation.index.time
+consommation = pd.pivot_table(pd.melt(consommation, id_vars=["date", "time"]), index="date", values="value",
+                              columns=["Périmètre", "time"])
+#+END_SRC
+
+#+RESULTS:
+
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/7dayACF.png  :exports both :results raw drawer :async t
+plt.figure()
+ax = plt.gca()
+for columns in consommation:
+    plt.plot(acf(consommation.loc[:,columns].diff(7)[7:], nlags=100), alpha=0.05, color="black")
+ax.set_xlabel("Lag")
+ax.set_ylabel("Autocorrelation")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: Text(0,0.5,'Autocorrelation')
+[[file:./img/7dayACF.png]]
+:END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer
+def test_stationarity(timeseries):
+    # Perform Dickey-Fuller test:
+    print('Results of Dickey-Fuller Test:')
+    dftest = adfuller(timeseries, autolag="AIC")
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
+    for key, value in dftest[4].items():
+        dfoutput['Critical Value (%s)' % key] = value
+    return dfoutput
+
+consommation = consommation.diff(7)[7:]
+test_stationarity(consommation.iloc[:, 1])
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
   #+BEGIN_EXAMPLE
-  Perimetre
-    Auvergne-Rhône-Alpes       1.000012
-    Bourgogne-Franche-Comté    1.000012
-    Bretagne                   1.000012
-    Centre-Val de Loire        1.000012
-    Grand-Est                  1.000012
-    Hauts-de-France            1.000012
-    Ile-de-France              1.000012
-    Normandie                  1.000012
-    Nouvelle-Aquitaine         1.000012
-    Occitanie                  1.000012
-    PACA                       1.000012
-    Pays-de-la-Loire           1.000012
+  Test Statistic                -6.134467e+00
+    p-value                        8.250744e-08
+    #Lags Used                     2.200000e+01
+    Number of Observations Used    1.124000e+03
+    Critical Value (1%)           -3.436181e+00
+    Critical Value (5%)           -2.864115e+00
+    Critical Value (10%)          -2.568141e+00
     dtype: float64
   #+END_EXAMPLE
   :END:
 
+  #+BEGIN_SRC ipython :session
+consommation = consommation.apply(zscore, axis=0)
+consommation = consommation.loc[:, consommation.isnull().sum() == 0]
+consommation.index = pd.to_datetime(consommation.iloc[:, 0].index)
+consommation = consommation.asfreq("1d")
+  #+END_SRC
+
+  #+RESULTS:
+
+
 
   #+BEGIN_SRC ipython :session :results raw drawer
-  consommation.mean()
+  consommation.mean()[:5]
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
   #+BEGIN_EXAMPLE
-  Perimetre
-    Auvergne-Rhône-Alpes       2.174192e-17
-    Bourgogne-Franche-Comté    2.184342e-17
-    Bretagne                   3.440237e-18
-    Centre-Val de Loire       -1.545604e-17
-    Grand-Est                  8.080641e-18
-    Hauts-de-France           -3.914244e-18
-    Ile-de-France             -1.276220e-17
-    Normandie                  1.093771e-18
-    Nouvelle-Aquitaine         1.522041e-18
-    Occitanie                 -1.375805e-17
-    PACA                      -1.960736e-17
-    Pays-de-la-Loire          -4.914753e-18
+  Périmètre             time    
+    Auvergne-Rhône-Alpes  00:30:00   -1.800362e-17
+                          01:00:00    1.558378e-17
+                          01:30:00   -1.621293e-17
+                          02:00:00    3.194190e-17
+                          02:30:00   -3.963699e-17
+    dtype: float64
+  #+END_EXAMPLE
+  :END:
+
+  #+BEGIN_SRC ipython :session :results raw drawer
+  consommation.std()[:5]
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  #+BEGIN_EXAMPLE
+  Périmètre             time    
+    Auvergne-Rhône-Alpes  00:30:00    1.000436
+                          01:00:00    1.000436
+                          01:30:00    1.000436
+                          02:00:00    1.000436
+                          02:30:00    1.000436
     dtype: float64
   #+END_EXAMPLE
   :END:
@@ -205,98 +274,137 @@
    the series. But in order to be sure the computation is correct, am trying
    it on 2 dummy series.
 
-   #+BEGIN_SRC ipython :session
-  ts1 = np.array([-1.5, -1. , -0.5,  0. ,  0.5,  1. ,  1.5])
-  ts2 = ts1 * 1
+   #+BEGIN_SRC ipython :session :results raw drawer
+k = np.max([np.where(pacf(consommation.loc[:, colname]) < 0)[0][0] for colname, col in consommation.iteritems()])
+k
    #+END_SRC
 
    #+RESULTS:
+   :RESULTS:
+   : 5
+   :END:
 
   With k of 3, I have made sure to convert each series into a "lag matrix".
 
-  #+BEGIN_SRC ipython :session :results output org :exports both
-    def k_matrix(ts, k):
-        return np.array([ts[(shift):ts.shape[0] - k + shift]
-                         for shift in np.arange(0, k + 1)]).T
-
-
-    k = 3
-    T = ts1.shape[0]
-    Xi = k_matrix(ts1, 3)
-    Xj = k_matrix(ts2, 3)
-
-    Xij = np.concatenate((Xi, Xj), axis=1)
-
-    print("Xi = ", Xi)
-    print("\n")
-    print("Xj = ", Xj)
-    print("\n")
-    print("Xij = ", Xij)
-
+  #+BEGIN_SRC ipython :session :results output code :exports both
+print(inspect.getsource(helpers.k_matrix))
   #+END_SRC 
 
   #+RESULTS:
-  #+BEGIN_SRC org
-  Xi =  [[-1.5 -1.  -0.5  0. ]
-  [-1.  -0.5  0.   0.5]
-  [-0.5  0.   0.5  1. ]
-  [ 0.   0.5  1.   1.5]]
+  #+BEGIN_SRC ipython
+  def k_matrix(ts, k):
+      return np.array([ts[(shift):ts.shape[0] - k + shift] for shift in np.arange(0, k + 1)]).T
+
+  #+END_SRC
 
 
-  Xj =  [[-1.5 -1.  -0.5  0. ]
-  [-1.  -0.5  0.   0.5]
-  [-0.5  0.   0.5  1. ]
-  [ 0.   0.5  1.   1.5]]
+  #+BEGIN_SRC ipython :session :results output code :exports both
+print(inspect.getsource(helpers.get_GCC))
+  #+END_SRC 
 
+  #+RESULTS:
+  #+BEGIN_SRC ipython
+  def get_GCC(ts1, ts2, k):
+      Xi = k_matrix(ts1, k)
+      Xj = k_matrix(ts2, k)
+      Xij = np.concatenate((Xi, Xj), axis=1)
+      GCC = 1 - np.linalg.det(np.corrcoef(Xij, rowvar=False) ** (1 / 2 * (k + 1))) / (
+          np.linalg.det(np.corrcoef(Xi, rowvar=False) ** (1 / 2 * (k + 1))) \
+          ,* np.linalg.det(np.corrcoef(Xj, rowvar=False) ** (1 / 2 * (k + 1))))
+      return GCC
 
-  Xij =  [[-1.5 -1.  -0.5  0.  -1.5 -1.  -0.5  0. ]
-  [-1.  -0.5  0.   0.5 -1.  -0.5  0.   0.5]
-  [-0.5  0.   0.5  1.  -0.5  0.   0.5  1. ]
-  [ 0.   0.5  1.   1.5  0.   0.5  1.   1.5]]
   #+END_SRC
 
   Then trying a few different ways of calculation the correlation matrix, I am
   struggling to get a correct value for GCC:
 
-  #+BEGIN_SRC ipython :session :results raw drawer :exports both
-  def corr_matrix(X):
-      I = np.identity(X.shape[0])
-      ones = np.ones((1,X.shape[0]))
-      P = I - ones * ones.T / (X.shape[0])
-      S = np.dot(np.dot(X.T, P), X) / (X.shape[0])
-      D = np.diagonal(S)
-      return D**-0.5 * S * D**-0.5
-
-  GCC =  1- np.linalg.det(corr_matrix(Xij) ** (1/2*(k+1))) / (
-      np.linalg.det(corr_matrix(Xi) ** (1 / 2 * (k + 1))) \
-      * np.linalg.det(corr_matrix(Xj) ** (1 / 2 * (k + 1))))
-
-  GCC
-
+  #+BEGIN_SRC ipython :session :results raw drawer :exports both :async t
+DM_GCC = np.zeros((consommation.shape[1], consommation.shape[1]))
+for i, j in itertools.combinations(range(consommation.shape[1]), 2):
+    DM_GCC[i, j] = DM_GCC[j, i] = 1 - helpers.get_GCC(consommation.iloc[:, i], consommation.iloc[:, j], k)
+DM_GCC = pd.DataFrame(DM_GCC, index=consommation.columns, columns=consommation.columns)
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
-  : nan
   :END:
 
-  #+BEGIN_SRC ipython :session :results raw drawer :exports both
-  def corr_matrix(X):
-      S = np.cov(X)
-      D = np.diagonal(S)
-      R = D**-0.5 * S * D**-0.5
-      return D**-0.5 * S * D**-0.5
+#+BEGIN_SRC ipython :session :exports none
+pickle.dump(DM_GCC, open(join(data_path, "DM_GCC.p"), "wb"))
+#+END_SRC
 
-  GCC =  1- np.linalg.det(corr_matrix(Xij) ** (1/2*(k+1))) / (
-      np.linalg.det(corr_matrix(Xi) ** (1 / 2 * (k + 1))) \
-      * np.linalg.det(corr_matrix(Xj) ** (1 / 2 * (k + 1))))
+#+RESULTS:
 
-  GCC
+#+BEGIN_SRC ipython :session :exports none
+DM_GCC = pickle.load(open(join(data_path, "DM_GCC.p"), "rb"))
+#+END_SRC
+
+
+
+* Clustering
+  #+BEGIN_SRC ipython :session :ipyfile  :exports both
+linkage = hcl.linkage(squareform(DM_GCC), method="average")
+  #+END_SRC
+
+  #+RESULTS:
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/elbow.png :exports both :results raw drawer
+  plt.figure()
+  plt.plot(range(1, len(linkage)+1), linkage[::-1, 2])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: [<matplotlib.lines.Line2D at 0x22174c7d7f0>]
+[[file:./img/elbow.png]]
+:END:
+
+
+#+BEGIN_SRC ipython :session :exports both :results raw drawer
+  elbow = np.diff(linkage[::-1, 2], 2)
+  n_clust1 = elbow.argmax()+2
+  elbow[elbow.argmax()] = 0
+  n_clust2 = elbow.argmax()+2
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+  
+
+  #+BEGIN_SRC ipython :session :ipyfile ./img/n_clust1_TSNE.png :exports both :results raw drawer
+    n_clusters = n_clust1
+    clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
+
+    tsne_2dim = TSNE(n_components=2, metric="precomputed").fit_transform(DM_GCC)
+
+    plt.figure()
+    plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
-  : nan
+  : <matplotlib.collections.PathCollection at 0x2217479d278>
+  [[file:./img/n_clust1_TSNE.png]]
+  :END:
+
+
+
+  #+BEGIN_SRC ipython :session :ipyfile ./img/n_clust2_TSNE.png :exports both :results raw drawer
+    n_clusters = n_clust2
+    clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
+
+    tsne_2dim = TSNE(n_components=2, metric="precomputed").fit_transform(DM_GCC)
+
+    plt.figure()
+    plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  : <matplotlib.collections.PathCollection at 0x22175236898>
+  [[file:./img/n_clust2_TSNE.png]]
   :END:
 
 * References:
