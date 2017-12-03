@@ -18,11 +18,6 @@
 #+HTML_HEAD: <script type="text/javascript" src="http://www.pirilampo.org/styles/lib/js/jquery.stickytableheaders.min.js"></script>
 
 
-* Project Summary: 
-  The dynamic factor model is a well established modeling strategy when we face a large number of time series which makes it impossible to use standard multivariate techniques such as VARIMA models. Those time series could share some common factor but also the factors can have a group structure. Ando and Bai (2016) propose an iterative procedure for estimating a factor model with grouped factor structures. The starting step of the procedure relies on k-means algorithm and Euclidean metric on the original time series. It is known that Euclidean distance does not take into account the dependence among the individuals (time series in our case). In this project, we will consider other algorithms and metrics as starting step of the Ando and Bai’s procedure. We will evaluate the forecasting performance of the original and the proposed modification. The evaluation will consist of an extensive simulation study and its application to time series of the electricity market.
-
-  - Professor: Andrés Alonso (andres.alonso@uc3m.es) and Daniel Peña (daniel.pena@uc3m.es).
-
 * Preparing the data
 
 
@@ -44,13 +39,11 @@
     import src.helpers as helpers
   #+END_SRC
 
-  #+RESULTS:
-     
   I have downloaded all the regions definitive annual data from 2013 to 2015, the
   consolidated 2016 data as well as the running 2017 data. 
 
 
-  #+BEGIN_SRC ipython :session :async t
+  #+BEGIN_SRC ipython :session
 data_path = "data"
 
 data = pd.concat([
@@ -61,14 +54,6 @@ data = pd.concat([
 ])
   #+END_SRC
 
-  #+RESULTS:
-
-
-
-  After reading the data I made sure that the "Consommation" is read as a numeric
-  and read the date as a python Datetime.
-  Although the table has rows for every 15 minutes, there exist on records every
-  30 minutes. I have therefore removed all those empty rows.
 
   #+BEGIN_SRC ipython :session
 data = data.reset_index(drop=True)
@@ -81,12 +66,8 @@ data["Heures"] = pd.to_datetime((data["Heures"]).apply(str), format='%H:%M',
                                 infer_datetime_format=False).dt.time
   #+END_SRC
 
-  #+RESULTS:
 
 
-  Finally, in order to get 1 time series per region, I have used a pivot on the
-  "Consommation"column, resulting in a table where the columns are the regions and
-  the rows are the 30 minutes electricity consumption measurements.
 
   #+BEGIN_SRC ipython :session
 consommation = pd.pivot_table(
@@ -94,13 +75,12 @@ consommation = pd.pivot_table(
 consommation = consommation.drop('France', axis=1)
   #+END_SRC
 
-  #+RESULTS:
 
 
 ** Quality control
 
-   To assure that I only proceed with good data, I have deleted all the
-   regions that did not have 50% of the data.
+
+   Removing all incomplete regions
 
   #+BEGIN_SRC ipython :session
   # Good series have more than 99% data
@@ -111,7 +91,8 @@ good_series = [
 consommation = consommation.loc[:, good_series]
   #+END_SRC
 
-  #+RESULTS:
+  From around 2016, there are a lot of missing data. all records from that date
+  were removed
 
 #+BEGIN_SRC ipython :session :file  :exports both 
 start_bad_date = np.unique(np.where(consommation.isnull())[0])[0]
@@ -119,7 +100,6 @@ bad_date = consommation.index[start_bad_date]
 consommation = consommation.iloc[:start_bad_date-1, :]
 #+END_SRC
 
-#+RESULTS:
 
 #+BEGIN_SRC ipython :session :file  :exports both :results raw drawer
 bad_date.date()
@@ -132,15 +112,7 @@ bad_date.date()
 
 
  
-  Furthermore, the data now contains some weird outliers:
-    
-
-  To get rid of those, I have removed those outliers by using a running median
-  of 30 days and a maximum difference of 2.5 standard deviation of the time
-  series compared to that median. Then, I have replaced the null values using
-  linear interpolation.
-
-  #+BEGIN_SRC ipython :session :ipyfile ./img/plotSeries.png :exports both :results raw drawer :async t
+  #+BEGIN_SRC ipython :session :ipyfile ./img/plotSeries.png :exports both :results raw drawer
   %matplotlib inline
 fig, ax = plt.subplots(4, 3, sharex=True, sharey=True)
 i = 0
@@ -160,15 +132,7 @@ for column in consommation.columns:
 
 
     
-  To get stationary data with a mean approaching 0 and a variance approaching 1, I have calculated the moving
-  difference between measurements and converted those values to zscore.
-
-#+BEGIN_SRC ipython :session :exports none
-consommation_backup = consommation.copy()
-consommation = consommation_backup.copy()
-#+END_SRC
-
-#+RESULTS:
+  Transforming the table from regions series to daily/regions series for each hour
 
 #+BEGIN_SRC ipython :session :file  :exports both
 consommation["date"] = consommation.index.date
@@ -179,8 +143,9 @@ consommation = pd.pivot_table(pd.melt(consommation, id_vars=["date", "time"]), i
 
 #+RESULTS:
 
+There is an autocorrelation of 7 days (weekly)
 
-#+BEGIN_SRC ipython :session :ipyfile ./img/7dayACF.png  :exports both :results raw drawer :async t
+#+BEGIN_SRC ipython :session :ipyfile ./img/7dayACF.png  :exports both :results raw drawer 
 plt.figure()
 ax = plt.gca()
 for columns in consommation:
@@ -222,6 +187,8 @@ test_stationarity(consommation.iloc[:, 1])
     dtype: float64
   #+END_EXAMPLE
   :END:
+
+Data was transformed using z-score and weekly differential  
 
   #+BEGIN_SRC ipython :session
 consommation = consommation.apply(zscore, axis=0)
@@ -270,9 +237,6 @@ consommation = consommation.asfreq("1d")
 
 * Calculation of GCC
 
-   The data should now be in the correct format to calculate the GCC between
-   the series. But in order to be sure the computation is correct, am trying
-   it on 2 dummy series.
 
    #+BEGIN_SRC ipython :session :results raw drawer
 k = np.max([np.where(pacf(consommation.loc[:, colname]) < 0)[0][0] for colname, col in consommation.iteritems()])
@@ -284,7 +248,6 @@ k
    : 5
    :END:
 
-  With k of 3, I have made sure to convert each series into a "lag matrix".
 
   #+BEGIN_SRC ipython :session :results output code :exports both
 print(inspect.getsource(helpers.k_matrix))
@@ -318,7 +281,7 @@ print(inspect.getsource(helpers.get_GCC))
   Then trying a few different ways of calculation the correlation matrix, I am
   struggling to get a correct value for GCC:
 
-  #+BEGIN_SRC ipython :session :results raw drawer :exports both :async t
+  #+BEGIN_SRC ipython :session :results raw drawer :exports both :eval no
 DM_GCC = np.zeros((consommation.shape[1], consommation.shape[1]))
 for i, j in itertools.combinations(range(consommation.shape[1]), 2):
     DM_GCC[i, j] = DM_GCC[j, i] = 1 - helpers.get_GCC(consommation.iloc[:, i], consommation.iloc[:, j], k)
@@ -329,7 +292,7 @@ DM_GCC = pd.DataFrame(DM_GCC, index=consommation.columns, columns=consommation.c
   :RESULTS:
   :END:
 
-#+BEGIN_SRC ipython :session :exports none
+#+BEGIN_SRC ipython :session :exports none :eval no
 pickle.dump(DM_GCC, open(join(data_path, "DM_GCC.p"), "wb"))
 #+END_SRC
 
@@ -342,6 +305,8 @@ DM_GCC = pickle.load(open(join(data_path, "DM_GCC.p"), "rb"))
 
 
 * Clustering
+
+** Determination of the number of clusters
   #+BEGIN_SRC ipython :session :ipyfile  :exports both
 linkage = hcl.linkage(squareform(DM_GCC), method="average")
   #+END_SRC
@@ -351,11 +316,16 @@ linkage = hcl.linkage(squareform(DM_GCC), method="average")
 #+BEGIN_SRC ipython :session :ipyfile ./img/elbow.png :exports both :results raw drawer
   plt.figure()
   plt.plot(range(1, len(linkage)+1), linkage[::-1, 2])
+  ax = plt.gca()
+  ax.set_xlim([0,20])
+  ax.set_ylim([0,1])
+  ax.set_xlabel("Number of clusters")
+  ax.set_ylabel("Between clusters distance")
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-: [<matplotlib.lines.Line2D at 0x22174c7d7f0>]
+: Text(0,0.5,'Between clusters distance')
 [[file:./img/elbow.png]]
 :END:
 
@@ -365,15 +335,17 @@ linkage = hcl.linkage(squareform(DM_GCC), method="average")
   n_clust1 = elbow.argmax()+2
   elbow[elbow.argmax()] = 0
   n_clust2 = elbow.argmax()+2
+  [n_clust1, n_clust2]
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
 :END:
 
-  
+** Clustering methods comparison  
 
   #+BEGIN_SRC ipython :session :ipyfile ./img/n_clust1_TSNE.png :exports both :results raw drawer
+    from sklearn.manifold import TSNE
     n_clusters = n_clust1
     clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
 
@@ -381,11 +353,14 @@ linkage = hcl.linkage(squareform(DM_GCC), method="average")
 
     plt.figure()
     plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+    ax = plt.gca()
+    ax.set_xlabel("x-tsne")
+    ax.set_ylabel("y-tsne")
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
-  : <matplotlib.collections.PathCollection at 0x2217479d278>
+  : Text(0,0.5,'y-tsne')
   [[file:./img/n_clust1_TSNE.png]]
   :END:
 
@@ -399,13 +374,223 @@ linkage = hcl.linkage(squareform(DM_GCC), method="average")
 
     plt.figure()
     plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+    ax = plt.gca()
+    ax.set_xlabel("x-tsne")
+    ax.set_ylabel("y-tsne")
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
-  : <matplotlib.collections.PathCollection at 0x22175236898>
+  : Text(0,0.5,'y-tsne')
   [[file:./img/n_clust2_TSNE.png]]
   :END:
+
+
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/n_clust1_spectral.png :exports both :results raw drawer
+  from sklearn.cluster import SpectralClustering
+
+  n_clusters = n_clust1
+  clusters = SpectralClustering(n_clusters, affinity="precomputed").fit_predict(DM_GCC)
+
+  tsne_2dim = TSNE(n_components=2, metric="precomputed").fit_transform(DM_GCC)
+
+  plt.figure()
+  plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+  ax = plt.gca()
+  ax.set_xlabel("x-tsne")
+  ax.set_ylabel("y-tsne")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: Text(0,0.5,'y-tsne')
+[[file:./img/n_clust1_spectral.png]]
+:END:
+
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/n_clust2_spectral.png :exports both :results raw drawer
+  from sklearn.cluster import SpectralClustering
+
+  n_clusters = n_clust2
+  clusters = SpectralClustering(n_clusters, affinity="precomputed").fit_predict(DM_GCC)
+
+  tsne_2dim = TSNE(n_components=2, metric="precomputed").fit_transform(DM_GCC)
+
+  plt.figure()
+  plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+  ax = plt.gca()
+  ax.set_xlabel("x-tsne")
+  ax.set_ylabel("y-tsne")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: Text(0,0.5,'y-tsne')
+[[file:./img/n_clust2_spectral.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/n_clust1_kmeans.png  :exports both :results raw drawer
+from sklearn.cluster import KMeans
+
+n_clusters = n_clust1
+eigen_values, eigen_vectors = np.linalg.eigh(DM_GCC)
+clusters = KMeans(n_clusters=n_clusters, init='k-means++').fit_predict(eigen_vectors[:, 2:4])
+
+plt.figure()
+plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+ax = plt.gca()
+ax.set_xlabel("x-tsne")
+ax.set_ylabel("y-tsne")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: Text(0,0.5,'y-tsne')
+[[file:./img/n_clust1_kmeans.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/n_clust2_kmeans.png  :exports both :results raw drawer
+from sklearn.cluster import KMeans
+
+n_clusters = n_clust2
+eigen_values, eigen_vectors = np.linalg.eigh(DM_GCC)
+clusters = KMeans(n_clusters=n_clusters, init='k-means++').fit_predict(eigen_vectors[:, 2:4])
+
+plt.figure()
+plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+ax = plt.gca()
+ax.set_xlabel("x-tsne")
+ax.set_ylabel("y-tsne")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: Text(0,0.5,'y-tsne')
+[[file:./img/n_clust2_kmeans.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/n_clust1_dbscan.png  :exports both :results raw drawer
+    from sklearn.cluster import DBSCAN
+
+    for eps in np.arange(0.0001, 0.01, 0.0001):
+        clusters = DBSCAN(eps=eps, min_samples=10, metric="precomputed").fit_predict(DM_GCC)
+        n_clusters = len(np.unique(clusters[clusters>0]))
+        if n_clusters == n_clust1:
+          plt.figure()
+          plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+          ax = plt.gca()
+          ax.set_xlabel("x-tsne")
+          ax.set_ylabel("y-tsne")
+          break
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: Text(0,0.5,'y-tsne')
+[[file:./img/n_clust1_dbscan.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/n_clust2_dbscan.png  :exports both :results raw drawer
+    from sklearn.cluster import DBSCAN
+
+    for eps in np.arange(0.0001, 0.01, 0.0001):
+        clusters = DBSCAN(eps=eps, min_samples=10, metric="precomputed").fit_predict(DM_GCC)
+        n_clusters = len(np.unique(clusters[clusters>0]))
+        if n_clusters == n_clust2:
+          plt.figure()
+          plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+          ax = plt.gca()
+          ax.set_xlabel("x-tsne")
+          ax.set_ylabel("y-tsne")
+          break
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: Text(0,0.5,'y-tsne')
+[[file:./img/n_clust2_dbscan.png]]
+:END:
+
+#+BEGIN_SRC ipython :session :ipyfile ./img/regions_dbscan.png  :exports both :results raw drawer
+  from sklearn.cluster import DBSCAN
+
+  for eps in np.arange(0.0001, 0.01, 0.0001):
+      clusters = DBSCAN(eps=eps, min_samples=10, metric="precomputed").fit_predict(DM_GCC)
+      n_clusters = len(np.unique(clusters[clusters>0]))
+      if n_clusters == len(np.unique(consommation.columns.get_level_values("Périmètre"))):
+          plt.figure()
+          plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
+          ax = plt.gca()
+          ax.set_xlabel("x-tsne")
+          ax.set_ylabel("y-tsne")
+          break
+
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:./img/regions_dbscan.png]]
+:END:
+
+
+* Mapping the clusters
+
+#+BEGIN_SRC ipython :session :exports both
+    n_clusters = n_clust2
+    clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
+    consommation_clusters = pd.DataFrame(np.transpose([[series[0] for series in consommation.columns.values],
+                                                      [series[1] for series in consommation.columns.values],
+                                                      list(clusters)]), columns=["Region", "Time", "Cluster"])
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session :exports both
+  region_cluster = consommation_clusters.groupby(by="Region")["Cluster"].value_counts().index.to_frame()
+  region_cluster.index = region_cluster["Region"].values
+
+  region_codes = pd.read_csv("./data/frenchRegions.csv")
+
+  region_cluster["Region"].isin(region_codes["Region"])
+  region_cluster["region_match"] = region_cluster["Region"]
+
+  region_codes = {}
+  region_codes["Auvergne-Rhône-Alpes"] = [83, 82]
+  region_codes["Bourgogne-Franche-Comté"] = [26, 43]
+  region_codes["Bretagne"] = [53]
+  region_codes["Centre-Val de Loire"] = [24]
+  region_codes["Grand-Est"] = [42, 21, 41]
+  region_codes["Hauts-de-France"] = [31, 22]
+  region_codes["Ile-de-France"] = [11]
+  region_codes["Normandie"] = [23, 25]
+  region_codes["Nouvelle-Aquitaine"] = [72, 54, 74]
+  region_codes["Occitanie"] = [91, 73]
+  region_codes["PACA"] = [93]
+  region_codes["Pays-de-la-Loire"] = [52]
+#+END_SRC
+
+#+RESULTS:
+
+
+#+BEGIN_SRC ipython :session :exports code :results silent
+import  pygal
+from itertools import chain
+
+fr_chart = pygal.maps.fr.Regions()
+fr_chart.title = 'Regions clusters'
+for cluster in np.unique(region_cluster["Cluster"]):
+    fr_chart.add("Cluster " + str(cluster), 
+                 list(chain.from_iterable([region_codes[region] 
+                                           for region in region_cluster.loc[
+                                               region_cluster["Cluster"]==cluster, "Region"].values])))
+fr_chart.render_to_file("./img/regions_clusters.svg")
+#+END_SRC
+
+[[file:./img/regions_clusters.svg]]
+
+
+
 
 * References:
    Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A panel data approach with high-dimensional predictors and factor structures. To appear at JASA. Available at: http://dx.doi.org/10.1080/01621459.2016.1195743

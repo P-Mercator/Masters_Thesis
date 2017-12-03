@@ -25,6 +25,7 @@ region_cluster.loc[region_cluster["Region"]=="PACA", "region_match"] = [93]
 region_cluster.loc[region_cluster["Region"]=="Pays-de-la-loire", "region_match"] = [52]
 
 
+"""
 region_codes = {}
 region_codes["Auvergne-Rhône-Alpes"] = [83, 82]
 region_codes["Bourgogne-Franche-Comté"] = [26, 43]
@@ -38,14 +39,18 @@ region_codes["Nouvelle-Aquitaine"] = [72, 54, 74]
 region_codes["Occitanie"] = [91, 73]
 region_codes["PACA"] = [93]
 region_codes["Pays-de-la-Loire"] = [52]
+"""
 
 plt.show()
 import  pygal
-fr_chart = pygal.maps.fr.Regions()
-fr_chart.title = 'Some regions'
 from itertools import chain
+fr_chart = pygal.maps.fr.Regions()
+fr_chart.title = 'Regions clusters'
 for cluster in np.unique(region_cluster["Cluster"]):
-    fr_chart.add("Cluster " + str(cluster), list(chain.from_iterable([region_codes[region] for region in region_cluster.loc[region_cluster["Cluster"]==cluster, "Region"].values])))
+    fr_chart.add("Cluster " + str(cluster),
+                 list(chain.from_iterable([region_codes[region]
+                                           for region in region_cluster.loc[
+                                               region_cluster["Cluster"]==cluster, "Region"].values])))
 fr_chart.render_to_file("test.svg")
 fr_chart.render_to_png("test.png")
 
