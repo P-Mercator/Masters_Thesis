@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2017-12-03 Sun 23:02 -->
+<!-- 2017-12-03 Sun 23:07 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Clustering large number of time series.</title>
@@ -245,27 +245,27 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org774269a">1. Preparing the data</a>
+<li><a href="#orgcaf0f41">1. Preparing the data</a>
 <ul>
-<li><a href="#orgd9febcf">1.1. Quality control</a></li>
+<li><a href="#org2853a52">1.1. Quality control</a></li>
 </ul>
 </li>
-<li><a href="#org4118a1f">2. Calculation of GCC</a></li>
-<li><a href="#org2363e99">3. Clustering</a>
+<li><a href="#org19b6be1">2. Calculation of GCC</a></li>
+<li><a href="#org26ae9a2">3. Clustering</a>
 <ul>
-<li><a href="#org8e46e0b">3.1. Determination of the number of clusters</a></li>
-<li><a href="#org6e1a8be">3.2. Clustering methods comparison</a></li>
+<li><a href="#org73b4693">3.1. Determination of the number of clusters</a></li>
+<li><a href="#org37ef9d0">3.2. Clustering methods comparison</a></li>
 </ul>
 </li>
-<li><a href="#orgb5b9af5">4. Mapping the clusters</a></li>
-<li><a href="#orgcf57ae7">5. References:</a></li>
+<li><a href="#orgb75e248">4. Mapping the clusters</a></li>
+<li><a href="#org024e5a7">5. References:</a></li>
 </ul>
 </div>
 </div>
 
 
-<div id="outline-container-org774269a" class="outline-2">
-<h2 id="org774269a"><span class="section-number-2">1</span> Preparing the data</h2>
+<div id="outline-container-orgcaf0f41" class="outline-2">
+<h2 id="orgcaf0f41"><span class="section-number-2">1</span> Preparing the data</h2>
 <div class="outline-text-2" id="text-1">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> glob
@@ -330,8 +330,8 @@ consolidated 2016 data as well as the running 2017 data.
 
 
 
-<div id="outline-container-orgd9febcf" class="outline-3">
-<h3 id="orgd9febcf"><span class="section-number-3">1.1</span> Quality control</h3>
+<div id="outline-container-org2853a52" class="outline-3">
+<h3 id="org2853a52"><span class="section-number-3">1.1</span> Quality control</h3>
 <div class="outline-text-3" id="text-1-1">
 <p>
 Removing all incomplete regions
@@ -482,8 +482,8 @@ Data was transformed using z-score and weekly differential
 </div>
 </div>
 
-<div id="outline-container-org4118a1f" class="outline-2">
-<h2 id="org4118a1f"><span class="section-number-2">2</span> Calculation of GCC</h2>
+<div id="outline-container-org19b6be1" class="outline-2">
+<h2 id="org19b6be1"><span class="section-number-2">2</span> Calculation of GCC</h2>
 <div class="outline-text-2" id="text-2">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">k</span> = np.<span style="color: #4f97d7;">max</span><span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">[</span>np.where<span style="color: #2d9574;">(</span>pacf<span style="color: #67b11d;">(</span>consommation.loc<span style="color: #b1951d;">[</span>:, colname<span style="color: #b1951d;">]</span><span style="color: #67b11d;">)</span> &lt; <span style="color: #a45bad;">0</span><span style="color: #2d9574;">)[</span><span style="color: #a45bad;">0</span><span style="color: #2d9574;">][</span><span style="color: #a45bad;">0</span><span style="color: #2d9574;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> colname, col <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.iteritems<span style="color: #2d9574;">()</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
@@ -523,6 +523,10 @@ k
 </pre>
 </div>
 
+<p>
+Then trying a few different ways of calculation the correlation matrix, I am
+struggling to get a correct value for GCC:
+</p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">DM_GCC</span> = np.zeros<span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">(</span>consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
@@ -534,12 +538,12 @@ k
 </div>
 </div>
 
-<div id="outline-container-org2363e99" class="outline-2">
-<h2 id="org2363e99"><span class="section-number-2">3</span> Clustering</h2>
+<div id="outline-container-org26ae9a2" class="outline-2">
+<h2 id="org26ae9a2"><span class="section-number-2">3</span> Clustering</h2>
 <div class="outline-text-2" id="text-3">
 </div>
-<div id="outline-container-org8e46e0b" class="outline-3">
-<h3 id="org8e46e0b"><span class="section-number-3">3.1</span> Determination of the number of clusters</h3>
+<div id="outline-container-org73b4693" class="outline-3">
+<h3 id="org73b4693"><span class="section-number-3">3.1</span> Determination of the number of clusters</h3>
 <div class="outline-text-3" id="text-3-1">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">linkage</span> = hcl.linkage<span style="color: #4f97d7;">(</span>squareform<span style="color: #bc6ec5;">(</span>DM_GCC<span style="color: #bc6ec5;">)</span>, method=<span style="color: #2d9574;">"average"</span><span style="color: #4f97d7;">)</span>
@@ -584,8 +588,8 @@ Text(0,0.5,'Between clusters distance')
 </div>
 </div>
 
-<div id="outline-container-org6e1a8be" class="outline-3">
-<h3 id="org6e1a8be"><span class="section-number-3">3.2</span> Clustering methods comparison</h3>
+<div id="outline-container-org37ef9d0" class="outline-3">
+<h3 id="org37ef9d0"><span class="section-number-3">3.2</span> Clustering methods comparison</h3>
 <div class="outline-text-3" id="text-3-2">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> sklearn.manifold <span style="color: #4f97d7; font-weight: bold;">import</span> TSNE
@@ -814,8 +818,8 @@ Text(0,0.5,'y-tsne')
 </div>
 
 
-<div id="outline-container-orgb5b9af5" class="outline-2">
-<h2 id="orgb5b9af5"><span class="section-number-2">4</span> Mapping the clusters</h2>
+<div id="outline-container-orgb75e248" class="outline-2">
+<h2 id="orgb75e248"><span class="section-number-2">4</span> Mapping the clusters</h2>
 <div class="outline-text-2" id="text-4">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">n_clusters</span> = n_clust2
@@ -868,7 +872,7 @@ fr_chart.render_to_file<span style="color: #4f97d7;">(</span><span style="color:
 
 
 <div class="figure">
-<p><object type="image/svg+xml" data="./test.svg" class="org-svg">
+<p><object type="image/svg+xml" data="./img/regions_clusters.svg" class="org-svg">
 Sorry, your browser does not support SVG.</object>
 </p>
 </div>
@@ -878,8 +882,8 @@ Sorry, your browser does not support SVG.</object>
 
 
 
-<div id="outline-container-orgcf57ae7" class="outline-2">
-<h2 id="orgcf57ae7"><span class="section-number-2">5</span> References:</h2>
+<div id="outline-container-org024e5a7" class="outline-2">
+<h2 id="org024e5a7"><span class="section-number-2">5</span> References:</h2>
 <div class="outline-text-2" id="text-5">
 <p>
 Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A panel data approach with high-dimensional predictors and factor structures. To appear at JASA. Available at: <a href="http://dx.doi.org/10.1080/01621459.2016.1195743">http://dx.doi.org/10.1080/01621459.2016.1195743</a>
@@ -889,7 +893,7 @@ Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A p
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Pierre Mercatoris</p>
-<p class="date">Created: 2017-12-03 Sun 23:02</p>
+<p class="date">Created: 2017-12-03 Sun 23:07</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

@@ -1,0 +1,122 @@
+
+  #+BEGIN_SRC ipython :session
+    import glob
+    import inspect
+    from os.path import join
+
+    import itertools
+    import pickle
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    import scipy.cluster.hierarchy as hcl
+    from scipy.spatial.distance import squareform
+    from scipy.stats.mstats import zscore
+    from statsmodels.tsa.stattools import adfuller, pacf, acf
+    import statsmodels.tsa.ar_model as ar
+    import statsmodels.tsa.api as smt
+
+    import src.helpers as helpers
+    data_path = "data"
+
+    # Combine all the .xls of each region
+    data = pd.concat([
+        pd.read_table(
+            file, encoding="cp1252", delimiter="\t", engine="python",
+            index_col=False).iloc[1:-1, :]
+        for file in glob.glob(join(data_path, "*.xls"))
+    ])
+
+    data.to_csv(join(data_path, "all_raw.csv"), encoding="utf-8", index_label=False)
+    data = pd.read_csv(join(data_path, "all_raw.csv"), encoding="cp1252")
+
+    # Format type of variables
+    data = data.reset_index(drop=True)
+    data["Consommation"] = pd.to_numeric(data["Consommation"], errors='coerce')
+    data = data.loc[~data["Consommation"].isnull(), :]
+    data["Datetime"] = pd.to_datetime(
+        (data["Date"] + '_' + data["Heures"]).apply(str), format='%Y-%m-%d_%H:%M')
+    data["Date"] = pd.to_datetime((data["Date"]).apply(str), format='%Y-%m-%d')
+    data["Heures"] = pd.to_datetime((data["Heures"]).apply(str), format='%H:%M',
+                                    infer_datetime_format=False).dt.time
+
+    # Reshape to 48 series per region (1 daily series for each 30 mins)
+    consommation = pd.pivot_table(
+        data, values='Consommation', index='Datetime', columns=['Périmètre'])
+    consommation = consommation.drop('France', axis=1)
+
+    # Remove empty series
+    good_series = [
+        consommation.iloc[:, i].isnull().sum() / consommation.iloc[:, i].shape[0] <
+        0.99 for i in range(consommation.shape[1])
+    ]
+    consommation = consommation.loc[:, good_series]
+
+    # Save to access from R
+    consommation.to_csv(join(data_path, "consommation.csv"), encoding="utf-8", index_label="datetime")
+    consommation = pd.read_csv(join(data_path, "consommation.csv"), encoding="utf-8", index_col="datetime")
+  #+END_SRC
+
+  #+RESULTS:
+
+#+BEGIN_SRC R :session :exports both :results raw drawer
+  library(tidyverse)
+  library(lubridate)
+  data <- read.csv("data/all_raw.csv", row.names=NULL, encoding = "UTF-8")
+  data$Date <- parse_date(data$Date)
+  data$Heures <- parse_time(data$Heures)
+  data$Consommation <- data$Consommation %>%
+    as.character() %>%
+    parse_double(na = c("", "NA", "-"))
+
+  data <- filter(data, !is.na(Consommation))
+
+#+END_SRC
+
+
+
+#+BEGIN_SRC R :session :results output drawer :exports both
+colnames(data)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+ [1] "row.names"                           
+ [2] "Bioénergies"                         
+ [3] "Bioénergies...Biogaz"                
+ [4] "Bioénergies...Biomasse"              
+ [5] "Bioénergies...Déchets"               
+ [6] "Charbon"                             
+ [7] "Consommation"                        
+ [8] "Date"                                
+ [9] "Ech..comm..Allemagne.Belgique"       
+[10] "Ech..comm..Angleterre"               
+[11] "Ech..comm..Espagne"                  
+[12] "Ech..comm..Italie"                   
+[13] "Ech..comm..Suisse"                   
+[14] "Ech..physiques"                      
+[15] "Eolien"                              
+[16] "Fioul"                               
+[17] "Fioul...Autres"                      
+[18] "Fioul...Cogén."                      
+[19] "Fioul...TAC"                         
+[20] "Gaz"                                 
+[21] "Gaz...Autres"                        
+[22] "Gaz...CCG"                           
+[23] "Gaz...Cogén."                        
+[24] "Gaz...TAC"                           
+[25] "Heures"                              
+[26] "Hydraulique"                         
+[27] "Hydraulique...Fil.de.l.eau...éclusée"
+[28] "Hydraulique...Lacs"                  
+[29] "Hydraulique...STEP.turbinage"        
+[30] "Nature"                              
+[31] "Nucléaire"                           
+[32] "Pompage"                             
+[33] "Prévision.J"                         
+[34] "Prévision.J.1"                       
+[35] "Périmètre"                           
+[36] "Solaire"                             
+[37] "Taux.de.Co2"                         
+[38] "Thermique"
+:END:
