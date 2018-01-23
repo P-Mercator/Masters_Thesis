@@ -2,6 +2,7 @@
 
 #+Author: Pierre Mercatoris
 #+Title: Clustering large number of time series.
+#+PROPERTY: header-args    :eval no-export
 
 
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="http://www.pirilampo.org/styles/bigblow/css/htmlize.css"/>
@@ -21,96 +22,263 @@
 
 * Preparing the data
 
-
-  #+BEGIN_SRC ipython :session
-  #+END_SRC
-
   #+RESULTS:
 
 ** Reading the data
 
-  I have downloaded all the regions definitive annual data from 2013 to 2015, the
-  consolidated 2016 data as well as the running 2017 data. 
-
-
  
-#+BEGIN_SRC ipython :session :exports both :results raw drawer
-    import glob
-    import inspect
-    from os.path import join
+*** In Python
+    
 
-    import itertools
-    import pickle
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
-    import scipy.cluster.hierarchy as hcl
-    from scipy.spatial.distance import squareform
-    from scipy.stats.mstats import zscore
-    from statsmodels.tsa.stattools import adfuller, pacf, acf
-    import statsmodels.tsa.ar_model as ar
-    import statsmodels.tsa.api as smt
+  I have downloaded all the regions' annual data from 2013 to 2015, the
+  consolidated 2016 data as well as the running 2017 data. The data came split
+  between files for each 12 regions of France and each year, where each record
+  contains the date, the time, the region and the electricity consumption.
 
-    import src.helpers as helpers
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
+  I have needed to correct the names of the regions as those where changed
+  (probably by error) on the 29th of February 2016. 
 
 #+BEGIN_SRC ipython :session :exports both :results raw drawer
+  from os.path import join
+  import glob
+  import pandas as pd
+
   data_path = "data"
 
   # Combine all the .xls of each region
   data = pd.concat([
       pd.read_table(
           file, encoding="cp1252", delimiter="\t", engine="python",
-          index_col=False).iloc[1:-1, :]
+          index_col=False).iloc[:-1, :]
       for file in glob.glob(join(data_path, "*.xls"))
   ])
 
-  data.to_csv(join(data_path, "all_raw.csv"), index_label=False)
-  data = pd.read_csv(join(data_path, "all_raw.csv"), encoding="cp1252")
-
   # Format type of variables
-  data = data.reset_index(drop=True)
   data["Consommation"] = pd.to_numeric(data["Consommation"], errors='coerce')
-  data = data.loc[~data["Consommation"].isnull(), :]
   data["Datetime"] = pd.to_datetime(
       (data["Date"] + '_' + data["Heures"]).apply(str), format='%Y-%m-%d_%H:%M')
-  data["Date"] = pd.to_datetime((data["Date"]).apply(str), format='%Y-%m-%d')
-  data["Heures"] = pd.to_datetime((data["Heures"]).apply(str), format='%H:%M',
-                                  infer_datetime_format=False).dt.time
 
-  # Reshape to 48 series per region (1 daily series for each 30 mins)
-  consommation = pd.pivot_table(
-      data, values='Consommation', index='Datetime', columns=['P�rim�tre'])
-  consommation = consommation.drop('France', axis=1)
-
-  # Remove empty series
-  good_series = [
-      consommation.iloc[:, i].isnull().sum() / consommation.iloc[:, i].shape[0] <
-      0.99 for i in range(consommation.shape[1])
-  ]
-  consommation = consommation.loc[:, good_series]
-
-  # Save to access from R
-  consommation.to_csv(join(data_path, "consommation.csv"), index_label="datetime")
-  consommation = pd.read_csv(join(data_path, "consommation.csv"), encoding="cp1252", index_col="datetime")
-
+  # Correct regions names
+  data.loc[data['Périmètre'] == 'Auvergne et Rhône-Alpes', 'Périmètre'] = 'Auvergne-Rhône-Alpes'
+  data.loc[data['Périmètre'] == 'Bourgogne et Franche Comté', 'Périmètre'] = 'Bourgogne-Franche-Comté'
+  data.loc[data['Périmètre'] == 'Alsace, Champagne-Ardenne et Lorraine', 'Périmètre'] = 'Grand-Est'
+  data.loc[data['Périmètre'] == 'Nord-Pas-de-Calais et Picardie', 'Périmètre'] = 'Hauts-de-France'
+  data.loc[data['Périmètre'] == 'Aquitaine, Limousin et Poitou-Charentes', 'Périmètre'] = 'Nouvelle-Aquitaine'
+  data.loc[data['Périmètre'] == 'Languedoc-Roussillon et Midi-Pyrénées', 'Périmètre'] = 'Occitanie'
+ 
+  data.head()
   #+END_SRC
 
   #+RESULTS:
+  :RESULTS:
+  #+BEGIN_EXAMPLE
+    Périmètre               Nature        Date Heures  Consommation  \
+    0  Centre-Val de Loire  Données définitives  2016-01-01  00:00        2446.0
+    1  Centre-Val de Loire  Données définitives  2016-01-01  00:15           NaN
+    2  Centre-Val de Loire  Données définitives  2016-01-01  00:30        2334.0
+    3  Centre-Val de Loire  Données définitives  2016-01-01  00:45           NaN
+    4  Centre-Val de Loire  Données définitives  2016-01-01  01:00        2262.0
 
+    Thermique Nucléaire Eolien Solaire Hydraulique Pompage Bioénergies  \
+    0        75     11237    347       0           1       -          54
+    1       NaN       NaN    NaN     NaN         NaN     NaN         NaN
+    2        76     11260    312       0           1       -          51
+    3       NaN       NaN    NaN     NaN         NaN     NaN         NaN
+    4        68     11144    251       0           1       -          53
 
+    Ech. physiques            Datetime
+    0          -9268 2016-01-01 00:00:00
+    1            NaN 2016-01-01 00:15:00
+    2          -9365 2016-01-01 00:30:00
+    3            NaN 2016-01-01 00:45:00
+    4          -9255 2016-01-01 01:00:00
+  #+END_EXAMPLE
+  :END:
 
+As all the regions are in the same columns, I have used a pivot table to get 1
+column per region for each 'Datetime' (1 column for each of 12 regions). Additionally, it is important to set the timezone to UTC in order to account for
+daylight saving time change and avoid removing data or introducing NAs.
 
+#+BEGIN_SRC ipython :session :exports both :results raw drawer
+  # Reshape to row = datetime and column = region, all values are consumption
+  consommation = pd.pivot_table(
+      data, values='Consommation', index='Datetime', columns=['Périmètre'])
+  # Set timezone as it creates problem when changing between daylight saving times.
+  consommation = consommation.tz_localize('UTC', ambiguous=False)
+  consommation = consommation.resample('30T').mean()
 
-#+BEGIN_SRC R :session :exports both :results output drawer
+  consommation.head()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+BEGIN_EXAMPLE
+  Périmètre                  Auvergne-Rhône-Alpes  Bourgogne-Franche-Comté  \
+  Datetime
+  2013-01-01 00:00:00+00:00                   NaN                      NaN
+  2013-01-01 00:30:00+00:00                8173.0                   2357.0
+  2013-01-01 01:00:00+00:00                7944.0                   2289.0
+  2013-01-01 01:30:00+00:00                7896.0                   2326.0
+  2013-01-01 02:00:00+00:00                7882.0                   2409.0
+  
+  Périmètre                  Bretagne  Centre-Val de Loire  Grand-Est  \
+  Datetime
+  2013-01-01 00:00:00+00:00       NaN                  NaN        NaN
+  2013-01-01 00:30:00+00:00    3050.0               2476.0     4943.0
+  2013-01-01 01:00:00+00:00    2866.0               2319.0     4811.0
+  2013-01-01 01:30:00+00:00    2735.0               2560.0     4840.0
+  2013-01-01 02:00:00+00:00    2874.0               2395.0     4897.0
+  
+  Périmètre                  Hauts-de-France  Ile-de-France  Normandie  \
+  Datetime
+  2013-01-01 00:00:00+00:00              NaN            NaN        NaN
+  2013-01-01 00:30:00+00:00           5989.0         9134.0     3683.0
+  2013-01-01 01:00:00+00:00           5832.0         8822.0     3549.0
+  2013-01-01 01:30:00+00:00           5926.0         8499.0     3570.0
+  2013-01-01 02:00:00+00:00           5695.0         8229.0     3569.0
+  
+  Périmètre                  Nouvelle-Aquitaine  Occitanie    PACA  \
+  Datetime
+  2013-01-01 00:00:00+00:00                 NaN        NaN     NaN
+  2013-01-01 00:30:00+00:00              5464.0     5228.0  5570.0
+  2013-01-01 01:00:00+00:00              5422.0     4955.0  5698.0
+  2013-01-01 01:30:00+00:00              5514.0     4888.0  5680.0
+  2013-01-01 02:00:00+00:00              5443.0     4881.0  5577.0
+  
+  Périmètre                  Pays-de-la-Loire
+  Datetime
+  2013-01-01 00:00:00+00:00               NaN
+  2013-01-01 00:30:00+00:00            3595.0
+  2013-01-01 01:00:00+00:00            3359.0
+  2013-01-01 01:30:00+00:00            3313.0
+  2013-01-01 02:00:00+00:00            3383.0
+#+END_EXAMPLE
+:END:
+
+In those 12 time series we can see some
+outliers at the beginning of September 2017 where the data is close to 0. Those
+gaps are expected as this data was not yet consolidated.
+
+  #+BEGIN_SRC ipython :session :ipyfile ./img/plotSeries.png :exports both :results raw drawer
+    import matplotlib.pyplot as plt
+    %matplotlib inline
+    
+    fig, ax = plt.subplots(4, 3, sharex=True, sharey=True)
+    fig.set_size_inches(18,13)
+    i = 0
+    row = 0
+    for column in consommation.columns:
+        col = i % 3
+        consommation[column].plot(ax=ax[row, col])
+        i += 1
+        if col == 2:
+            row += 1
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  [[file:./img/plotSeries.png]]
+  :END:
+  
+In order to make sure we are using
+clean data, I have decided to use the records from the 2nd of January 2013 (1st
+doesn't have data for midnight) to the 2nd of January 2017.
+
+Furthermore, a second pivot table was used in order to create a column for each
+30 minutes of the day. This resulted in a table composed of 576 daily time
+series (48 for each of the 12 regions) over 1455 days.
+
+#+BEGIN_SRC ipython :session :exports both :results raw drawer
+  import datetime
+
+  consommation["date"] = pd.to_datetime(consommation.index).date
+  consommation["time"] = pd.to_datetime(consommation.index).time
+  consommation = pd.pivot_table(pd.melt(consommation, id_vars=["date", "time"]),
+                                index="date", values="value", columns=["Périmètre", "time"])
+
+  # consommation = consommation.loc[datetime.date(2013,1,2):datetime.date(2017,1,2), :]
+  consommation = consommation.loc[datetime.date(2013,1,2):, :]
+
+  # Get rid of the 15 minutes columns (columns with nans)
+  # consommation = consommation.loc[:,consommation.isnull().sum()!=consommation.shape[0]]
+
+  consommation.head()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+BEGIN_EXAMPLE
+  Périmètre  Auvergne-Rhône-Alpes                                               \
+  time                   00:00:00 00:30:00 01:00:00 01:30:00 02:00:00 02:30:00
+  date
+  2013-01-02               7847.0   7674.0   7427.0   7441.0   7467.0   7550.0
+  2013-01-03               9028.0   8839.0   8544.0   8560.0   8569.0   8667.0
+  2013-01-04               8982.0   8754.0   8476.0   8480.0   8453.0   8554.0
+  2013-01-05               8625.0   8465.0   8165.0   8134.0   8087.0   8149.0
+  2013-01-06               8314.0   8097.0   7814.0   7791.0   7785.0   7842.0
+  
+  Périmètre                                        ...    Pays-de-la-Loire  \
+  time       03:00:00 03:30:00 04:00:00 04:30:00   ...            19:00:00
+  date                                             ...
+  2013-01-02   7434.0   7371.0   7233.0   7311.0   ...              4336.0
+  2013-01-03   8559.0   8483.0   8390.0   8392.0   ...              4279.0
+  2013-01-04   8436.0   8386.0   8224.0   8195.0   ...              4181.0
+  2013-01-05   7974.0   7897.0   7713.0   7597.0   ...              3877.0
+  2013-01-06   7670.0   7605.0   7418.0   7352.0   ...              3854.0
+  
+  Périmètre                                                                  \
+  time       19:30:00 20:00:00 20:30:00 21:00:00 21:30:00 22:00:00 22:30:00
+  date
+  2013-01-02   4228.0   4079.0   3923.0   3756.0   3565.0   3457.0   3510.0
+  2013-01-03   4166.0   4038.0   3862.0   3712.0   3463.0   3308.0   3394.0
+  2013-01-04   4123.0   3946.0   3755.0   3597.0   3559.0   3412.0   3456.0
+  2013-01-05   3786.0   3696.0   3540.0   3449.0   3296.0   3221.0   3296.0
+  2013-01-06   3834.0   3826.0   3771.0   3631.0   3494.0   3423.0   3420.0
+  
+  Périmètre
+  time       23:00:00 23:30:00
+  date
+  2013-01-02   4003.0   3710.0
+  2013-01-03   3909.0   3700.0
+  2013-01-04   3903.0   3662.0
+  2013-01-05   3864.0   3700.0
+  2013-01-06   3942.0   3717.0
+  
+  [5 rows x 576 columns]
+#+END_EXAMPLE
+:END:
+
+With minimal data manipulation, I was able to format the data into 48 daily
+series for each of the regions and get rid of all the 'missing' values.
+
+#+BEGIN_SRC ipython :session :exports both :results output
+print('Data dimensions: ', consommation.shape)
+print('Number of NA values: ', consommation.isnull().sum().sum())
+#+END_SRC
+
+#+RESULTS:
+: Data dimensions:  (1794, 576)
+: Number of NA values:  0
+
+#+BEGIN_SRC ipython :session :exports both :results raw drawer
+  # Merge multi index column names to read in R
+  consommation.columns = [col[0] + '_' + str(col[1]) for col in consommation.columns.values]
+  # Save to access from R
+  consommation.to_csv(join(data_path, "consommation.csv"))
+  # consommation = pd.read_csv(join(data_path, "consommation.csv"),index_col=[0], header=[0,1])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+*** In R (NOT USED ANYMORE!)
+#+BEGIN_SRC R :session :exports code :results silent
   library(tidyverse)
   library(lubridate)
+#+END_SRC
 
+#+BEGIN_SRC R :session :exports both :results output drawer
   data <- read.csv("data/all_raw.csv", row.names=NULL, encoding="cp1252")
   data$Date <- parse_date(data$Date)
   data$Heures <- parse_time(data$Heures)
@@ -119,349 +287,463 @@
     parse_double(na = c("", "NA", "-"))
 
   data <- data %>%
-    select(c("P�rim�tre", "Consommation", "Date", "Heures"))%>%
-    filter(P�rim�tre != "France")
-
-  head(data[ ,-which(colMeans(is.na(spread(data, key=P�rim�tre, value = Consommation))) > 0.5)])
+    select(c("Périmètre", "Consommation", "Date", "Heures"))%>%
+    filter(Périmètre != "France")
 
   goodRegions <- data %>%
-    spread(key=P�rim�tre, value = Consommation) %>%
+    spread(key=Périmètre, value = Consommation) %>%
     is.na() %>%
     colMeans() < 0.5
-  goodRegions <- names(which(goodRegions))
-  data <- data[P�rim�tre %in% goodRegions, ]
 
-  data.byHour <- data %>%
-    spread(key=Heures, value=Consommation)
-
-  colSums(!is.na(data.byHour))
-
-  head(data)
+  goodRegions<- names(which(goodRegions))
+  data <- data[data$Périmètre %in% goodRegions, ]
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
--- Attaching packages --------------------------------------- tidyverse 1.2.1 --
-v ggplot2 2.2.1     v purrr   0.2.4
-v tibble  1.3.4     v dplyr   0.7.4
-v tidyr   0.7.2     v stringr 1.2.0
-v readr   1.1.1     v forcats 0.2.0
--- Conflicts ------------------------------------------ tidyverse_conflicts() --
-x dplyr::filter() masks stats::filter()
-x dplyr::lag()    masks stats::lag()
-
-Attaching package: 'lubridate'
-
-The following object is masked from 'package:base':
-
-    date
 :END:
 
+#+BEGIN_SRC R :session :exports both :results output graphics :file ./img/r_xts_outliers.png
+  library(xts)
 
+  data.byPerimetre<- data %>%
+    spread(key=Périmètre, value=Consommation) %>%
+    filter(Date > ymd("2013-01-01"))
 
-** Reformat to regions series
+  dates <- as.POSIXct(paste(data.byPerimetre$Date, data.byPerimetre$Heures), format="%Y-%m-%d %H:%M:%S", tz="UTC")
+  regions.xts <- xts(data.matrix(data.byPerimetre[, c(-1,-2)]),order.by=dates)
 
-  #+BEGIN_SRC ipython :session
-consommation = pd.pivot_table(
-    data, values='Consommation', index='Datetime', columns=['P�rim�tre'])
-consommation = consommation.drop('France', axis=1)
-  #+END_SRC
+  ep <- endpoints(regions.xts, "minutes", k=30)
+  halfHour.xts <- period.apply(na.locf(regions.xts), INDEX = ep, FUN = mean)
 
-  #+RESULTS:
-
-#+BEGIN_SRC R :session :results raw drawer :exports both
-
-#+END_SRC
-
-
-** Quality control
-
-
-   Removing all incomplete regions
-
-  #+BEGIN_SRC ipython :session
-  # Good series have more than 99% data
-good_series = [
-    consommation.iloc[:, i].isnull().sum() / consommation.iloc[:, i].shape[0] <
-    0.99 for i in range(consommation.shape[1])
-]
-consommation = consommation.loc[:, good_series]
-  #+END_SRC
-
-  #+RESULTS:
-
-  From September 2017, there are a lot of missing data. all records from that date
-  were removed
-
-#+BEGIN_SRC ipython :session :exports both
-np.unique(consommation.index[consommation.isnull().sum(axis=1)>0].date)
+  plot.xts(halfHour.xts)
 #+END_SRC
 
 #+RESULTS:
-: #+BEGIN_EXAMPLE
-: array([datetime.date(2016, 2, 29), datetime.date(2017, 9, 3),
-:          datetime.date(2017, 9, 10), datetime.date(2017, 9, 13),
-:          datetime.date(2017, 9, 14), datetime.date(2017, 9, 16),
-:          datetime.date(2017, 9, 17), datetime.date(2017, 9, 20),
-:          datetime.date(2017, 9, 29), datetime.date(2017, 10, 1),
-:          datetime.date(2017, 10, 3), datetime.date(2017, 10, 7),
-:          datetime.date(2017, 10, 12), datetime.date(2017, 10, 13)], dtype=object)
-: #+END_EXAMPLE
-
-
-#+BEGIN_SRC ipython :session :ipyfile  :exports both
-consommation = consommation.loc[:datetime.date(2017,9,1), :]
-#+END_SRC
-
-#+RESULTS:
-
-#+BEGIN_SRC ipython :session :file  :exports both 
-  # start_bad_date = np.unique(np.where(consommation.isnull())[0])[0]
-  # bad_date = consommation.index[start_bad_date]
-  # consommation = consommation.iloc[:start_bad_date-1, :]
-#+END_SRC
-
-#+RESULTS:
-
-
-#+BEGIN_SRC ipython :session :file  :exports both :results raw drawer
-  # bad_date.date()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: datetime.date(2016, 2, 29)
-:END:
-
-
+[[file:./img/r_xts_outliers.png]]
  
-  #+BEGIN_SRC ipython :session :ipyfile ./img/plotSeries.png :exports both :results raw drawer
-  %matplotlib inline
-fig, ax = plt.subplots(4, 3, sharex=True, sharey=True)
-fig.set_size_inches(18,13)
-i = 0
-row = 0
-for column in consommation.columns:
-    col = i % 3
-    consommation[column].plot(ax=ax[row, col])
-    i += 1
-    if col == 2:
-        row += 1
-  #+END_SRC
+#+BEGIN_SRC R :session :exports both :results output graphics :file ./img/r_xts.png
+  ## From 1st of september 2017, we get 15 minutes measurements
+  data.byPerimetre<- data %>%
+    spread(key=Périmètre, value=Consommation) %>%
+    filter(Date > ymd("2013-01-01")) %>%
+      filter(Date < ymd("2017-09-01"))
 
-  #+RESULTS:
-  :RESULTS:
-  [[file:./img/plotSeries.png]]
-  :END:
+  dates <- as.POSIXct(paste(data.byPerimetre$Date, data.byPerimetre$Heures), format="%Y-%m-%d %H:%M:%S", tz="UTC")
+  regions.xts <- xts(data.matrix(data.byPerimetre[, c(-1,-2)]),order.by=dates)
 
+  ep <- endpoints(regions.xts, "minutes", k=30)
+  halfHour.xts <- period.apply(na.locf(regions.xts), INDEX = ep, FUN = mean)
 
-    
-  Transforming the table from regions series to daily/regions series for each hour
-
-#+BEGIN_SRC ipython :session :file  :exports both
-consommation["date"] = consommation.index.date
-consommation["time"] = consommation.index.time
-consommation = pd.pivot_table(pd.melt(consommation, id_vars=["date", "time"]), index="date", values="value",
-                              columns=["P�rim�tre", "time"])
+  plot.xts(halfHour.xts)
 #+END_SRC
 
 #+RESULTS:
+[[file:./img/r_xts.png]]
 
-#+BEGIN_SRC ipython :session :ipyfile  :exports both
-consommation = consommation.apply(lambda x: x.interpolate(limit_direction="both"))
+
+#+BEGIN_SRC R :session :exports both :results table :colnames yes :rownames yes
+  tHourly <- function(x) {
+    ## print(index(x[1]))
+    # initialize result matrix for all 48 half-hour
+    dnames <- list(paste0(date(index(x))[1]),
+                   paste0("H", seq(0,23.5,0.5), rep(colnames(x), each = 48)))
+    res <- matrix(NA, 1, dim(x)[2] * 48, dimnames = dnames)
+    # update result object and return
+    res[,] <- unlist(split(t(x), seq(ncol(x))))
+    res
+  }
+
+  # split on days, apply tHourly to each day, rbind results
+  p_mat <- split(halfHour.xts, f="days", drop=FALSE, k=1)
+  p_list <- lapply(p_mat, tHourly)
+  p_hmat <- do.call(rbind, p_list)
+
+  head(p_hmat[,1:2])
 #+END_SRC
 
 #+RESULTS:
+|            | H0Auvergne-Rhône-Alpes | H0.5Auvergne-Rhône-Alpes |
+|------------+------------------------+--------------------------|
+| 2013-01-02 |                   7847 |                     7674 |
+| 2013-01-03 |                   9028 |                     8839 |
+| 2013-01-04 |                   8982 |                     8754 |
+| 2013-01-05 |                   8625 |                     8465 |
+| 2013-01-06 |                   8314 |                     8097 |
+| 2013-01-07 |                   8312 |                     8214 |
 
-
-There is an autocorrelation of 7 days (weekly)
-
-#+BEGIN_SRC ipython :session :ipyfile ./img/7dayACF.png  :exports both :results raw drawer 
-plt.figure()
-ax = plt.gca()
-for columns in consommation:
-    plt.plot(acf(consommation.loc[:,columns].diff(7)[7:], nlags=100), alpha=0.05, color="black")
-ax.set_xlabel("Lag")
-ax.set_ylabel("Autocorrelation")
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: Text(0,0.5,'Autocorrelation')
-[[file:./img/7dayACF.png]]
-:END:
-
-#+BEGIN_SRC ipython :session :exports both
-consommation = consommation.diff(7)[7:]
-#+END_SRC
-
-#+RESULTS:
-
-
-  #+BEGIN_SRC ipython :session :exports both :results raw drawer
-def test_stationarity(timeseries):
-    # Perform Dickey-Fuller test:
-    dftest = adfuller(timeseries, autolag="AIC")
-    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
-    for key, value in dftest[4].items():
-        dfoutput['Critical Value (%s)' % key] = value
-    return dfoutput
-
-
-  #+END_SRC
-
-  #+RESULTS:
-  :RESULTS:
-  :END:
-
-#+BEGIN_SRC ipython :session :ipyfile  :exports both
-p_values = consommation.apply(lambda x: test_stationarity(x)["p-value"])
-#+END_SRC
-
-#+RESULTS:
-
-#+BEGIN_SRC ipython :session :ipyfile pValuesStationarity.png :exports both :results raw drawer
-import seaborn as sns
-sns.distplot(p_values.values, kde=False)
+#+BEGIN_SRC R :session :exports both :results output drawer
+dim(p_hmat)
+sum(is.na(p_hmat))
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-: <matplotlib.axes._subplots.AxesSubplot at 0x267b7e15438>
-[[file:pValuesStationarity.png]]
+[1] 1703  576
+[1] 0
 :END:
 
 
-
-Data was transformed using z-score and weekly differential  
-
-  #+BEGIN_SRC ipython :session
-consommation = consommation.apply(zscore, axis=0)
-consommation.index = pd.to_datetime(consommation.iloc[:, 0].index)
-consommation = consommation.asfreq("1d")
-  #+END_SRC
-
-  #+RESULTS:
+** Transform the data
+*** Stationarity
 
 
-
-  #+BEGIN_SRC ipython :session :results raw drawer
-  consommation.mean()[:5]
-  #+END_SRC
-
-  #+RESULTS:
-  :RESULTS:
-  #+BEGIN_EXAMPLE
-  P�rim�tre             time    
-    Auvergne-Rh�ne-Alpes  00:00:00    2.371572e-17
-                          00:30:00    9.649847e-18
-                          01:00:00   -7.752589e-18
-                          01:30:00   -2.060815e-17
-                          02:00:00   -2.064086e-17
-    dtype: float64
-  #+END_EXAMPLE
-  :END:
-
-  #+BEGIN_SRC ipython :session :results raw drawer
-  consommation.std()[:5]
-  #+END_SRC
-
-  #+RESULTS:
-  :RESULTS:
-  #+BEGIN_EXAMPLE
-  P�rim�tre             time    
-    Auvergne-Rh�ne-Alpes  00:00:00    1.000295
-                          00:30:00    1.000295
-                          01:00:00    1.000295
-                          01:30:00    1.000295
-                          02:00:00    1.000295
-    dtype: float64
-  #+END_EXAMPLE
-  :END:
-
-* Calculation of GCC
+ As all the series are daily values there is a strong weekly seasonality within
+ the raw values. The black lines show the autocorrelation function until lag 100
+ of each individual series, while the red one is the function of the mean of the series.
 
 
-   #+BEGIN_SRC ipython :session :results raw drawer
-k = np.max([np.where(pacf(consommation.loc[:, colname]) < 0)[0][0] for colname, col in consommation.iteritems()])
-k
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/decompose_R.png
+   library(tidyverse)
+   library(xts)
+
+
+   consommation <- read.csv('./data/consommation.csv', row.names='date')
+
+   ## consommation <- xts(consommation, order.by = as.Date(as.POSIXct(parse_date(rownames(consommation)))))
+
+   ts1 = ts(consommation[,1], frequency = 375, start = 2013)
+   plot(decompose(ts1))
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:./img/decompose_R.png]]
+
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf0_R.png
+   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
+   for (i in 2:dim(consommation)[2]){
+     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
+   }
+   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:./img/acf0_R.png]]
+ 
+
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf1_R.png
+   consommation = diff(as.matrix(consommation), 1)
+   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
+   for (i in 2:dim(consommation)[2]){
+     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
+   }
+   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
+ #+END_SRC
+ 
+ #+RESULTS:
+ [[file:./img/acf1_R.png]]
+
+
+ #+BEGIN_SRC ipython :session :ipyfile ./img/acf_python.png  :exports both :results raw drawer
+   from statsmodels.tsa.stattools import acf
+   import pandas as pd
+   import matplotlib.pyplot as plt
+   %matplotlib inline
+
+   consommation = pd.read_csv(join(data_path, 'consommation.csv'), index_col=0)
+   consommation = consommation.diff(1).diff(7).iloc[8:,:]
+
+   plt.figure()
+   ax = plt.gca()
+   for columns in consommation:
+       plt.plot(acf(consommation.loc[:,columns], nlags=100), alpha=0.05, color="black")
+   plt.plot(acf(consommation.mean(axis=1), nlags=100), color='red')
+   ax.set_xlabel("Lag")
+   ax.set_ylabel("Autocorrelation")
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ : Text(0,0.5,'Autocorrelation')
+ [[file:./img/acf_python.png]]
+ :END:
+ 
+
+
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf17_R.png
+   consommation = diff(consommation, 7)
+   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
+   for (i in 2:dim(consommation)[2]){
+     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
+   }
+   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:./img/acf17_R.png]]
+
+
+ To remove that seasonality, for each day, the weekly difference was calculated,
+ making all of the 576 significantly stationary, as the maximum p value observed
+ using the Dickey-Fuller test is much less than 0.05 (with magnitude order of
+ 10^{-7}).
+
+
+ #+BEGIN_SRC R :session :exports both :results output drawer
+   library(fpp)
+
+   max_p = 0
+   for (i in 2:dim(consommation)[2]){
+     p = adf.test(consommation[,i], alternative='stationary')$p.value
+     if (p > max_p){
+       max_p <- p
+     }
+   }
+   print(paste(c('All values below', max_p), collapse=' '))
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ There were 50 or more warnings (use warnings() to see the first 50)
+ [1] "All values below 0.01"
+ :END:
+
+
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer
+ from statsmodels.tsa.stattools import adfuller
+
+ def test_stationarity(timeseries):
+     # Perform Dickey-Fuller test:
+     dftest = adfuller(timeseries, autolag="AIC")
+     dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
+     for key, value in dftest[4].items():
+         dfoutput['Critical Value (%s)' % key] = value
+     return dfoutput
+
+ p_values = consommation.apply(lambda x: test_stationarity(x)["p-value"])
+ p_values.max()
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   : 5
+   : 1.6017214722257996e-22
    :END:
-#+BEGIN_SRC ipython :session 
-k = consommation.apply(lambda x: ar.AR(x).select_order(maxlag=30, ic="bic", trend="nc")).max()
+ 
+ Data was transformed using z-score and weekly differential
+
+ $$Z = \frac{x - \mu}{\sigma}$$
+
+#+BEGIN_SRC R :session :exports both :results output drawer
+  consommation <- scale(consommation)
+
+  print(mean(consommation[,1]))
+  print(sd(consommation[,1]))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[1] -1.414671e-17
+[1] 1
+:END:
+ 
+
+   #+BEGIN_SRC ipython :session
+     from scipy.stats.mstats import zscore
+     consommation = consommation.apply(zscore, axis=0)
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC ipython :session :exports both :results output drawer
+   print('Mean of z score is between', consommation.mean().min(), ' and ', consommation.mean().max())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   Mean of z score is between -3.45623741149e-17  and  2.94650455584e-17
+   :END:
+
+   #+BEGIN_SRC ipython :session :exports both :results output drawer
+   print('Std of z score is between', consommation.std().min(), ' and ', consommation.std().max())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   Std of z score is between 1.00028007282  and  1.00028007282
+   :END:
+   
+* Calculation of GCC
+
+** Selection of k
+
+   At first I decided to check for the order of AR from our times series by
+   checking the 'partial autocorrelation function', which is the autocorrelation
+   of the series but controlling for the correlations between values at shorter
+   lags than the one used.
+
+ #+BEGIN_SRC ipython :session :ipyfile ./img/pacf_python.png  :exports both :results raw drawer
+   from statsmodels.tsa.stattools import pacf    
+
+   plt.figure()
+   ax = plt.gca()
+   all_pacf = np.array([pacf(consommation.loc[:,columns], nlags=100) for columns in consommation])
+   plt.axhline(1.96/np.sqrt(len(mean_pacf)), color='red')
+   plt.axhline(-1.96/np.sqrt(len(mean_pacf)), color='red')
+   for p in all_pacf:
+       plt.plot(p, alpha=0.05, color="black")
+   plt.plot(pacf(consommation.mean(axis=1), nlags=100), color='red')
+   ax.set_xlabel("Lag")
+   ax.set_ylabel("Partial Autocorrelation")
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ : Text(0,0.5,'Partial Autocorrelation')
+ [[file:./img/pacf_python.png]]
+ :END:
+
+
+   #+BEGIN_SRC ipython :session :results raw drawer :exports both
+     orders = [r[0] + np.where(all_pacf[:, r[0]:r[1]] == all_pacf[:, r[0]:r[1]].min())[1][0]
+         for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
+     orders
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   : [7, 14, 21, 35, 42, 56, 63, 77, 84, 91]
+   :END:
+
+   #+BEGIN_SRC ipython :session :results raw drawer :exports both
+     mean_pacf = pacf(consommation.mean(axis=1).values, nlags=100)
+     orders = [r[0] + mean_pacf[r[0] : r[1]].argmin()
+      for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
+     orders
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   : [7, 14, 21, 35, 42, 56, 63, 70, 84, 98]
+   :END:
+
+   Tried with max lag 40 but the GCC computation failed
+
+#+BEGIN_SRC ipython :session :exports both
+import statsmodels.tsa.ar_model as ar
+k = consommation.apply(lambda x: ar.AR(x).select_order(maxlag=40, ic="bic", trend="nc")).max()
 k
 #+END_SRC
 
 #+RESULTS:
-: : 38
+: : 37
 
+#+BEGIN_SRC R :session :exports both :results output drawer
+  library(FitAR)
+
+  getOrder <- function(ts, order.max=40) {
+    SelectModel(ts, ARModel = 'AR', Criterion = 'BIC', lag.max = 20)[1,1]
+  }
+
+  k <- max(apply(consommation, 2, getOrder))
+  print(k)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[1] 17
+:END:
+
+#+BEGIN_SRC ipython :session
+k=17
+#+END_SRC
+
+#+RESULTS:
 
 
   #+BEGIN_SRC ipython :session :results output code :exports both
-print(inspect.getsource(helpers.k_matrix))
+    import itertools
+    import pickle
+
+    def k_matrix(ts, k):
+        return np.array([ts[(shift):ts.shape[0] - k + shift] for shift in np.arange(0, k + 1)]).T
+
+    def get_GCC(ts1, ts2, k):
+        Xi = k_matrix(ts1, k)
+        Xj = k_matrix(ts2, k)
+        Xij = np.concatenate((Xi, Xj), axis=1)
+        GCC = 1 - np.linalg.det(np.corrcoef(Xij, rowvar=False)) ** (1 / (2 * (k + 1))) / (
+            np.linalg.det(np.corrcoef(Xi, rowvar=False)) ** (1 / (2 * (k + 1))) \
+            ,* np.linalg.det(np.corrcoef(Xj, rowvar=False)) ** (1 / (2 * (k + 1))) )
+        return GCC
+
+    DM_GCC = np.zeros((consommation.shape[1], consommation.shape[1]))
+    for i, j in itertools.combinations(range(consommation.shape[1]), 2):
+        DM_GCC[i, j] = DM_GCC[j, i] = 1 - get_GCC(consommation.iloc[:, i], consommation.iloc[:, j], k)
+    DM_GCC = pd.DataFrame(DM_GCC, index=consommation.columns, columns=consommation.columns)
+
   #+END_SRC 
 
   #+RESULTS:
   #+BEGIN_SRC ipython
-  def k_matrix(ts, k):
-      return np.array([ts[(shift):ts.shape[0] - k + shift] for shift in np.arange(0, k + 1)]).T
-
   #+END_SRC
 
+#+BEGIN_SRC R :session
+  ts1 <- consommation[,1]
+  ts2 <- consommation[,300]
 
-  #+BEGIN_SRC ipython :session :results output code :exports both
-print(inspect.getsource(helpers.get_GCC))
-  #+END_SRC 
+  kMatrix <- function(ts, k) {
+    m <- ts[1 : (length(ts) - k)]
+    for (i in seq(k)[2:k]) {
+      m <- cbind(m, ts[i : (length(ts) - k + i - 1)])
+    }
+    m
+  }
 
-  #+RESULTS:
-  #+BEGIN_SRC ipython
-  def get_GCC(ts1, ts2, k):
-      Xi = k_matrix(ts1, k)
-      Xj = k_matrix(ts2, k)
-      Xij = np.concatenate((Xi, Xj), axis=1)
-      GCC = 1 - np.linalg.det(np.corrcoef(Xij, rowvar=False) ** (1 / 2 * (k + 1))) / (
-          np.linalg.det(np.corrcoef(Xi, rowvar=False) ** (1 / 2 * (k + 1))) \
-          ,* np.linalg.det(np.corrcoef(Xj, rowvar=False) ** (1 / 2 * (k + 1))))
-      return GCC
+  GCC <- function(ts1, ts2, k) {
+    Xi <-  kMatrix(ts1, k)
+    Xj <-  kMatrix(ts2, k)
 
-  #+END_SRC
+    Xij <- cbind(Xi, Xj)
+
+    1 - det(cor(Xij))^(1/(2*(k+1))) / (det(cor(Xi))^(1/(2*(k+1))) * det(cor(Xj))^(1/(2*(k+1))))
+  }
+
+  GCC(consommation[,1], consommation[,2], k)
+#+END_SRC
 
   Then trying a few different ways of calculation the correlation matrix, I am
   struggling to get a correct value for GCC:
 
-  #+BEGIN_SRC ipython :session :results raw drawer :exports both 
-DM_GCC = np.zeros((consommation.shape[1], consommation.shape[1]))
-for i, j in itertools.combinations(range(consommation.shape[1]), 2):
-    DM_GCC[i, j] = DM_GCC[j, i] = 1 - helpers.get_GCC(consommation.iloc[:, i], consommation.iloc[:, j], k)
-DM_GCC = pd.DataFrame(DM_GCC, index=consommation.columns, columns=consommation.columns)
-
-pickle.dump(DM_GCC, open(join(data_path, "DM_GCC_38.p"), "wb"))
-  #+END_SRC
-
-  #+RESULTS:
-  :RESULTS:
-  :END:
 
 #+BEGIN_SRC ipython :session :exports none :eval no
-pickle.dump(DM_GCC, open(join(data_path, "DM_GCC.p"), "wb"))
+pickle.dump(DM_GCC, open(join(data_path, "DM_GCC_17.p"), "wb"))
 #+END_SRC
 
 #+RESULTS:
 
 #+BEGIN_SRC ipython :session :exports none
-DM_GCC = pickle.load(open(join(data_path, "DM_GCC.p"), "rb"))
+import pickle
+from os.path import join
+
+data_path = 'data'
+
+DM_GCC = pickle.load(open(join(data_path, "DM_GCC_17.p"), "rb"))
 #+END_SRC
+
+#+RESULTS:
 
 
 
 * Clustering
+ #+BEGIN_SRC ipython :session :exports both :results raw drawer
+     import inspect
+
+     import numpy as np
+     from statsmodels.tsa.stattools import pacf    
+     import statsmodels.tsa.api as smt
+
+     import src.helpers as helpers
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ :END:
 
 ** Determination of the number of clusters
   #+BEGIN_SRC ipython :session :ipyfile  :exports both
+import scipy.cluster.hierarchy as hcl
+from scipy.spatial.distance import squareform
+
 linkage = hcl.linkage(squareform(DM_GCC), method="average")
   #+END_SRC
 
@@ -494,6 +776,7 @@ linkage = hcl.linkage(squareform(DM_GCC), method="average")
 
 #+RESULTS:
 :RESULTS:
+: [4, 2]
 :END:
 
 ** Clustering methods comparison  
@@ -641,8 +924,6 @@ ax.set_ylabel("y-tsne")
 
 #+RESULTS:
 :RESULTS:
-: Text(0,0.5,'y-tsne')
-[[file:./img/n_clust1_dbscan.png]]
 :END:
 
 #+BEGIN_SRC ipython :session :ipyfile ./img/n_clust2_dbscan.png  :exports both :results raw drawer
@@ -662,8 +943,6 @@ ax.set_ylabel("y-tsne")
 
 #+RESULTS:
 :RESULTS:
-: Text(0,0.5,'y-tsne')
-[[file:./img/n_clust2_dbscan.png]]
 :END:
 
 #+BEGIN_SRC ipython :session :ipyfile ./img/regions_dbscan.png  :exports both :results raw drawer
@@ -672,7 +951,7 @@ ax.set_ylabel("y-tsne")
   for eps in np.arange(0.0001, 0.01, 0.0001):
       clusters = DBSCAN(eps=eps, min_samples=10, metric="precomputed").fit_predict(DM_GCC)
       n_clusters = len(np.unique(clusters[clusters>0]))
-      if n_clusters == len(np.unique(consommation.columns.get_level_values("P�rim�tre"))):
+      if n_clusters == len(np.unique(consommation.columns.get_level_values("Périmètre"))):
           plt.figure()
           plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
           ax = plt.gca()
@@ -691,11 +970,15 @@ ax.set_ylabel("y-tsne")
 * Mapping the clusters
 
 #+BEGIN_SRC ipython :session :exports both
-    n_clusters = n_clust2
-    clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
-    consommation_clusters = pd.DataFrame(np.transpose([[series[0] for series in consommation.columns.values],
-                                                      [series[1] for series in consommation.columns.values],
-                                                      list(clusters)]), columns=["Region", "Time", "Cluster"])
+  import numpy as np
+
+  n_clusters = 4
+  clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
+  regions = [string.split('_')[0] for string in consommation.columns]
+  times = [string.split('_')[1] for string in consommation.columns]
+  consommation_clusters = pd.DataFrame(np.transpose([regions,
+                                                    times,
+                                                    list(clusters)]), columns=["Region", "Time", "Cluster"])
 #+END_SRC
 
 #+RESULTS:
@@ -710,8 +993,8 @@ ax.set_ylabel("y-tsne")
   region_cluster["region_match"] = region_cluster["Region"]
 
   region_codes = {}
-  region_codes["Auvergne-Rh�ne-Alpes"] = [83, 82]
-  region_codes["Bourgogne-Franche-Comt�"] = [26, 43]
+  region_codes["Auvergne-Rhône-Alpes"] = [83, 82]
+  region_codes["Bourgogne-Franche-Comté"] = [26, 43]
   region_codes["Bretagne"] = [53]
   region_codes["Centre-Val de Loire"] = [24]
   region_codes["Grand-Est"] = [42, 21, 41]
@@ -728,7 +1011,7 @@ ax.set_ylabel("y-tsne")
 
 
 #+BEGIN_SRC ipython :session :exports code :results silent
-import  pygal
+import pygal
 from itertools import chain
 
 fr_chart = pygal.maps.fr.Regions()
@@ -741,7 +1024,11 @@ for cluster in np.unique(region_cluster["Cluster"]):
 fr_chart.render_to_file("./img/regions_clusters.svg")
 #+END_SRC
 
+#+RESULTS:
+:RESULTS:
 [[file:./img/regions_clusters.svg]]
+:END:
+
 
 * Check within regions clusters
 

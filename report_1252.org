@@ -1,3 +1,0 @@
-#+BEGIN_SRC ipython :session :exports both :results raw drawer
-
-#+END_SRC
