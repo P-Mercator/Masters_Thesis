@@ -25,10 +25,7 @@
   #+RESULTS:
 
 ** Reading the data
-
- 
 *** In Python
-    
 
   I have downloaded all the regions' annual data from 2013 to 2015, the
   consolidated 2016 data as well as the running 2017 data. The data came split
@@ -260,6 +257,11 @@ print('Number of NA values: ', consommation.isnull().sum().sum())
 : Data dimensions:  (1794, 576)
 : Number of NA values:  0
 
+As you can see, this gives us a matrix of 1794 rows (days) and 576 columns (48
+half-hour of each 12 regions per day), with no NA values.
+
+This data is now saved into a csv to read from R.
+
 #+BEGIN_SRC ipython :session :exports both :results raw drawer
   # Merge multi index column names to read in R
   consommation.columns = [col[0] + '_' + str(col[1]) for col in consommation.columns.values]
@@ -389,9 +391,8 @@ sum(is.na(p_hmat))
 
 
  As all the series are daily values there is a strong weekly seasonality within
- the raw values. The black lines show the autocorrelation function until lag 100
- of each individual series, while the red one is the function of the mean of the series.
-
+ the raw values. Looking at the decomposition of one of the series, we can also
+ clearly see the yearly seasonality.
 
  #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/decompose_R.png
    library(tidyverse)
@@ -409,6 +410,11 @@ sum(is.na(p_hmat))
  #+RESULTS:
  [[file:./img/decompose_R.png]]
 
+In order to transform the data to stationary series, we need to study the
+ autocorrelation function. The black lines show the autocorrelation function until lag 100
+ of each individual series, while the red one is the function of the mean of the
+ series. That first autocorrelation clearly shows the weekly seasonality.
+
  #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf0_R.png
    plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
    for (i in 2:dim(consommation)[2]){
@@ -420,9 +426,11 @@ sum(is.na(p_hmat))
  #+RESULTS:
  [[file:./img/acf0_R.png]]
  
+To try and remove it, I have taken the weekly difference (difference between all
+the values separated by 7 days). Now there is still some correlation, but it is better.
 
  #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf1_R.png
-   consommation = diff(as.matrix(consommation), 1)
+   consommation = diff(as.matrix(consommation), 7)
    plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
    for (i in 2:dim(consommation)[2]){
      lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
@@ -433,6 +441,47 @@ sum(is.na(p_hmat))
  #+RESULTS:
  [[file:./img/acf1_R.png]]
 
+So as to get as close stationarity as possible without loosing too much data, I
+have taken another difference, but this time only 1 day. Now, most of the values
+stay within the confidence interval.
+
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf17_R.png
+   consommation = diff(consommation, 1)
+   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
+   for (i in 2:dim(consommation)[2]){
+     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
+   }
+   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:./img/acf17_R.png]]
+
+ I have then used the Dickey-Fuller test on all the series and confirmed that
+ all the series are now significantly stationary (all p-values lower than 0.01).
+
+ #+BEGIN_SRC R :session :exports both :results output drawer
+   library(fpp)
+
+   max_p = 0
+   for (i in 2:dim(consommation)[2]){
+     p = adf.test(consommation[,i], alternative='stationary')$p.value
+     if (p > max_p){
+       max_p <- p
+     }
+   }
+   print(paste(c('All values below', max_p), collapse=' '))
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ There were 50 or more warnings (use warnings() to see the first 50)
+ [1] "All values below 0.01"
+ :END:
+
+ 
+In Python, I have done exactly the same thing and can see that we can the exact
+same autocorrelation function.
 
  #+BEGIN_SRC ipython :session :ipyfile ./img/acf_python.png  :exports both :results raw drawer
    from statsmodels.tsa.stattools import acf
@@ -458,51 +507,13 @@ sum(is.na(p_hmat))
  [[file:./img/acf_python.png]]
  :END:
  
-
-
- #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf17_R.png
-   consommation = diff(consommation, 7)
-   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
-   for (i in 2:dim(consommation)[2]){
-     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
-   }
-   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
- #+END_SRC
-
- #+RESULTS:
- [[file:./img/acf17_R.png]]
-
-
- To remove that seasonality, for each day, the weekly difference was calculated,
- making all of the 576 significantly stationary, as the maximum p value observed
- using the Dickey-Fuller test is much less than 0.05 (with magnitude order of
- 10^{-7}).
-
-
- #+BEGIN_SRC R :session :exports both :results output drawer
-   library(fpp)
-
-   max_p = 0
-   for (i in 2:dim(consommation)[2]){
-     p = adf.test(consommation[,i], alternative='stationary')$p.value
-     if (p > max_p){
-       max_p <- p
-     }
-   }
-   print(paste(c('All values below', max_p), collapse=' '))
- #+END_SRC
-
- #+RESULTS:
- :RESULTS:
- There were 50 or more warnings (use warnings() to see the first 50)
- [1] "All values below 0.01"
- :END:
-
-
+In Python is was possible to get the exact p-values and show that the largest
+p-value is actually of order 10^{-22}.
+ 
    #+BEGIN_SRC ipython :session :exports both :results raw drawer
  from statsmodels.tsa.stattools import adfuller
 
- def test_stationarity(timeseries):
+ def test_stationarity(timeseries)
      # Perform Dickey-Fuller test:
      dftest = adfuller(timeseries, autolag="AIC")
      dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
@@ -518,8 +529,11 @@ sum(is.na(p_hmat))
    :RESULTS:
    : 1.6017214722257996e-22
    :END:
- 
- Data was transformed using z-score and weekly differential
+  
+*** Data standardisation
+   
+ In order to standardise the data and get a mean of 0 and standard deviation of
+ 1, the z-score was applied to each individual series.
 
  $$Z = \frac{x - \mu}{\sigma}$$
 
@@ -532,7 +546,7 @@ sum(is.na(p_hmat))
 
 #+RESULTS:
 :RESULTS:
-[1] -1.414671e-17
+[1] -2.064756e-17
 [1] 1
 :END:
  
@@ -565,11 +579,12 @@ sum(is.na(p_hmat))
 * Calculation of GCC
 
 ** Selection of k
+*** PACF
 
    At first I decided to check for the order of AR from our times series by
-   checking the 'partial autocorrelation function', which is the autocorrelation
+   looking at the 'partial autocorrelation function', which is the autocorrelation
    of the series but controlling for the correlations between values at shorter
-   lags than the one used.
+   lags.
 
  #+BEGIN_SRC ipython :session :ipyfile ./img/pacf_python.png  :exports both :results raw drawer
    from statsmodels.tsa.stattools import pacf    
@@ -592,17 +607,8 @@ sum(is.na(p_hmat))
  [[file:./img/pacf_python.png]]
  :END:
 
-
-   #+BEGIN_SRC ipython :session :results raw drawer :exports both
-     orders = [r[0] + np.where(all_pacf[:, r[0]:r[1]] == all_pacf[:, r[0]:r[1]].min())[1][0]
-         for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
-     orders
-   #+END_SRC
-
-   #+RESULTS:
-   :RESULTS:
-   : [7, 14, 21, 35, 42, 56, 63, 77, 84, 91]
-   :END:
+I then looked at those local minimums (for each 10 lag interval) by first getting the minimums of the mean
+pacf (red line).
 
    #+BEGIN_SRC ipython :session :results raw drawer :exports both
      mean_pacf = pacf(consommation.mean(axis=1).values, nlags=100)
@@ -616,9 +622,27 @@ sum(is.na(p_hmat))
    : [7, 14, 21, 35, 42, 56, 63, 70, 84, 98]
    :END:
 
-   Tried with max lag 40 but the GCC computation failed
+And then I checked the minimum across all the series, so as to make sure that
+the order was large enough for all series. The values are the same originally
+but deviate at larger lag. It seems that 21 is the largest significant order.
 
-#+BEGIN_SRC ipython :session :exports both
+   #+BEGIN_SRC ipython :session :results raw drawer :exports both
+     orders = [r[0] + np.where(all_pacf[:, r[0]:r[1]] == all_pacf[:, r[0]:r[1]].min())[1][0]
+         for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
+     orders
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   : [7, 14, 21, 35, 42, 56, 63, 77, 84, 91]
+   :END:
+
+*** AR model fitting
+    
+By fitting an AR model to each series with a maximum lag 40, python was able to
+get a k value of 37.
+
+#+BEGIN_SRC ipython :session :exports both :eval no
 import statsmodels.tsa.ar_model as ar
 k = consommation.apply(lambda x: ar.AR(x).select_order(maxlag=40, ic="bic", trend="nc")).max()
 k
@@ -627,7 +651,9 @@ k
 #+RESULTS:
 : : 37
 
-#+BEGIN_SRC R :session :exports both :results output drawer
+However, in R, k is 17.
+
+#+BEGIN_SRC R :session :exports both :results output drawer :eval no
   library(FitAR)
 
   getOrder <- function(ts, order.max=40) {
@@ -650,9 +676,14 @@ k=17
 #+RESULTS:
 
 
-  #+BEGIN_SRC ipython :session :results output code :exports both
+** GCC
+
+
+  #+BEGIN_SRC ipython :session :results output code :exports both :async t
     import itertools
     import pickle
+
+    k = 21
 
     def k_matrix(ts, k):
         return np.array([ts[(shift):ts.shape[0] - k + shift] for shift in np.arange(0, k + 1)]).T
@@ -670,17 +701,28 @@ k=17
     for i, j in itertools.combinations(range(consommation.shape[1]), 2):
         DM_GCC[i, j] = DM_GCC[j, i] = 1 - get_GCC(consommation.iloc[:, i], consommation.iloc[:, j], k)
     DM_GCC = pd.DataFrame(DM_GCC, index=consommation.columns, columns=consommation.columns)
-
   #+END_SRC 
 
-  #+RESULTS:
-  #+BEGIN_SRC ipython
-  #+END_SRC
+  
+#+BEGIN_SRC ipython :session :exports none :eval no
+pickle.dump(DM_GCC, open(join(data_path, "DM_GCC_21.p"), "wb"))
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC ipython :session :exports none
+import pickle
+from os.path import join
+
+data_path = 'data'
+
+DM_GCC = pickle.load(open(join(data_path, "DM_GCC_21.p"), "rb"))
+#+END_SRC
+
+#+RESULTS:
+
 
 #+BEGIN_SRC R :session
-  ts1 <- consommation[,1]
-  ts2 <- consommation[,300]
-
   kMatrix <- function(ts, k) {
     m <- ts[1 : (length(ts) - k)]
     for (i in seq(k)[2:k]) {
@@ -695,34 +737,19 @@ k=17
 
     Xij <- cbind(Xi, Xj)
 
-    1 - det(cor(Xij))^(1/(2*(k+1))) / (det(cor(Xi))^(1/(2*(k+1))) * det(cor(Xj))^(1/(2*(k+1))))
+    1 - det(cor(Xij))^(1/(2*(k+1))) /
+      (det(cor(Xi))^(1/(2*(k+1))) * det(cor(Xj))^(1/(2*(k+1))))
   }
 
-  GCC(consommation[,1], consommation[,2], k)
+  combinations <- combn(dim(consommation)[2], 2)
+  DM_GCC <- matrix(0, dim(combinations)[2], dim(combinations)[2])
+  for (d in seq(dim(combinations)[2])) {
+    distance <- GCC(consommation[, combinations[,d][1]],
+                    consommation[, combinations[,d][2]], k)
+    DM_GCC[combinations[,d][1], combinations[,d][2]] <- distance
+    DM_GCC[combinations[,d][2], combinations[,d][1]] <- distance
+  }
 #+END_SRC
-
-  Then trying a few different ways of calculation the correlation matrix, I am
-  struggling to get a correct value for GCC:
-
-
-#+BEGIN_SRC ipython :session :exports none :eval no
-pickle.dump(DM_GCC, open(join(data_path, "DM_GCC_17.p"), "wb"))
-#+END_SRC
-
-#+RESULTS:
-
-#+BEGIN_SRC ipython :session :exports none
-import pickle
-from os.path import join
-
-data_path = 'data'
-
-DM_GCC = pickle.load(open(join(data_path, "DM_GCC_17.p"), "rb"))
-#+END_SRC
-
-#+RESULTS:
-
-
 
 * Clustering
  #+BEGIN_SRC ipython :session :exports both :results raw drawer
@@ -776,7 +803,7 @@ linkage = hcl.linkage(squareform(DM_GCC), method="average")
 
 #+RESULTS:
 :RESULTS:
-: [4, 2]
+: [2, 4]
 :END:
 
 ** Clustering methods comparison  
@@ -1024,10 +1051,7 @@ for cluster in np.unique(region_cluster["Cluster"]):
 fr_chart.render_to_file("./img/regions_clusters.svg")
 #+END_SRC
 
-#+RESULTS:
-:RESULTS:
 [[file:./img/regions_clusters.svg]]
-:END:
 
 
 * Check within regions clusters

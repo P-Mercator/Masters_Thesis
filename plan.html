@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2018-01-12 Fri 23:16 -->
+<!-- 2018-01-24 Wed 00:53 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Clustering large number of time series.</title>
@@ -267,47 +267,58 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org53ee757">1. Preparing the data</a>
+<li><a href="#org70d1dc2">1. Preparing the data</a>
 <ul>
-<li><a href="#org95f22d2">1.1. Reading the data</a>
+<li><a href="#orgbf4c997">1.1. Reading the data</a>
 <ul>
-<li><a href="#org72fe0cd">1.1.1. In Python</a></li>
-<li><a href="#org1ea7564">1.1.2. In R (NOT USED ANYMORE!)</a></li>
+<li><a href="#orgf1fd7e8">1.1.1. In Python</a></li>
+<li><a href="#orgf8db94b">1.1.2. In R (NOT USED ANYMORE!)</a></li>
 </ul>
 </li>
-<li><a href="#org6a6796d">1.2. Transform the data</a>
+<li><a href="#org63bf2b4">1.2. Transform the data</a>
 <ul>
-<li><a href="#orgd2af660">1.2.1. In Python</a></li>
+<li><a href="#org31f5910">1.2.1. Stationarity</a></li>
+<li><a href="#orgc74d7a1">1.2.2. Data standardisation</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#org5bc4ccd">2. Calculation of GCC</a></li>
-<li><a href="#orga50a1a5">3. Clustering</a>
+<li><a href="#orge2977d1">2. Calculation of GCC</a>
 <ul>
-<li><a href="#orgad6ddd3">3.1. Determination of the number of clusters</a></li>
-<li><a href="#org4f1cdc9">3.2. Clustering methods comparison</a></li>
+<li><a href="#orgd415fe9">2.1. Selection of k</a>
+<ul>
+<li><a href="#org97737ab">2.1.1. PACF</a></li>
+<li><a href="#org71a3ab9">2.1.2. AR model fitting</a></li>
 </ul>
 </li>
-<li><a href="#org84b489d">4. Mapping the clusters</a></li>
-<li><a href="#org7ce8824">5. Check within regions clusters</a></li>
-<li><a href="#org881f6a1">6. References:</a></li>
+<li><a href="#org675d571">2.2. GCC</a></li>
+</ul>
+</li>
+<li><a href="#org75a960f">3. Clustering</a>
+<ul>
+<li><a href="#org974e48d">3.1. Determination of the number of clusters</a></li>
+<li><a href="#org7eec02e">3.2. Clustering methods comparison</a></li>
+</ul>
+</li>
+<li><a href="#org8007cf9">4. Mapping the clusters</a></li>
+<li><a href="#org60f9736">5. Check within regions clusters</a></li>
+<li><a href="#org9234ebd">6. References:</a></li>
 </ul>
 </div>
 </div>
 
 
-<div id="outline-container-org53ee757" class="outline-2">
-<h2 id="org53ee757"><span class="section-number-2">1</span> Preparing the data</h2>
+<div id="outline-container-org70d1dc2" class="outline-2">
+<h2 id="org70d1dc2"><span class="section-number-2">1</span> Preparing the data</h2>
 <div class="outline-text-2" id="text-1">
 </div>
 
-<div id="outline-container-org95f22d2" class="outline-3">
-<h3 id="org95f22d2"><span class="section-number-3">1.1</span> Reading the data</h3>
+<div id="outline-container-orgbf4c997" class="outline-3">
+<h3 id="orgbf4c997"><span class="section-number-3">1.1</span> Reading the data</h3>
 <div class="outline-text-3" id="text-1-1">
 </div>
-<div id="outline-container-org72fe0cd" class="outline-4">
-<h4 id="org72fe0cd"><span class="section-number-4">1.1.1</span> In Python</h4>
+<div id="outline-container-orgf1fd7e8" class="outline-4">
+<h4 id="orgf1fd7e8"><span class="section-number-4">1.1.1</span> In Python</h4>
 <div class="outline-text-4" id="text-1-1-1">
 <p>
 I have downloaded all the regions' annual data from 2013 to 2015, the
@@ -320,6 +331,7 @@ contains the date, the time, the region and the electricity consumption.
 I have needed to correct the names of the regions as those where changed
 (probably by error) on the 29th of February 2016. 
 </p>
+
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> os.path <span style="color: #4f97d7; font-weight: bold;">import</span> join
 <span style="color: #4f97d7; font-weight: bold;">import</span> glob
@@ -347,55 +359,38 @@ data.loc<span style="color: #4f97d7;">[</span>data<span style="color: #bc6ec5;">
 data.loc<span style="color: #4f97d7;">[</span>data<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #bc6ec5;">]</span> == <span style="color: #2d9574;">'Nord-Pas-de-Calais et Picardie'</span>, <span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #4f97d7;">]</span> = <span style="color: #2d9574;">'Hauts-de-France'</span>
 data.loc<span style="color: #4f97d7;">[</span>data<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #bc6ec5;">]</span> == <span style="color: #2d9574;">'Aquitaine, Limousin et Poitou-Charentes'</span>, <span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #4f97d7;">]</span> = <span style="color: #2d9574;">'Nouvelle-Aquitaine'</span>
 data.loc<span style="color: #4f97d7;">[</span>data<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #bc6ec5;">]</span> == <span style="color: #2d9574;">'Languedoc-Roussillon et Midi-Pyr&#233;n&#233;es'</span>, <span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #4f97d7;">]</span> = <span style="color: #2d9574;">'Occitanie'</span>
-<span style="color: #7590db;">data</span> = data.loc<span style="color: #4f97d7;">[</span>data<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #bc6ec5;">]</span> != <span style="color: #2d9574;">'France'</span>, :<span style="color: #4f97d7;">]</span>
 
 data.head<span style="color: #4f97d7;">()</span>
 </pre>
 </div>
 
 <pre class="example">
-Bioénergies Bioénergies - Biogaz Bioénergies - Biomasse  \
-0          39                  NaN                    NaN
-1         NaN                  NaN                    NaN
-2          39                  NaN                    NaN
-3         NaN                  NaN                    NaN
-4          40                  NaN                    NaN
+Périmètre               Nature        Date Heures  Consommation  \
+0  Centre-Val de Loire  Données définitives  2016-01-01  00:00        2446.0
+1  Centre-Val de Loire  Données définitives  2016-01-01  00:15           NaN
+2  Centre-Val de Loire  Données définitives  2016-01-01  00:30        2334.0
+3  Centre-Val de Loire  Données définitives  2016-01-01  00:45           NaN
+4  Centre-Val de Loire  Données définitives  2016-01-01  01:00        2262.0
 
-Bioénergies - Déchets  Charbon  Consommation        Date  \
-0                   NaN      NaN        3296.0  2016-01-01
-1                   NaN      NaN           NaN  2016-01-01
-2                   NaN      NaN        3180.0  2016-01-01
-3                   NaN      NaN           NaN  2016-01-01
-4                   NaN      NaN        2969.0  2016-01-01
+Thermique Nucléaire Eolien Solaire Hydraulique Pompage Bioénergies  \
+0        75     11237    347       0           1       -          54
+1       NaN       NaN    NaN     NaN         NaN     NaN         NaN
+2        76     11260    312       0           1       -          51
+3       NaN       NaN    NaN     NaN         NaN     NaN         NaN
+4        68     11144    251       0           1       -          53
 
-Ech. comm. Allemagne-Belgique Ech. comm. Angleterre Ech. comm. Espagne  \
-0                           NaN                   NaN                NaN
-1                           NaN                   NaN                NaN
-2                           NaN                   NaN                NaN
-3                           NaN                   NaN                NaN
-4                           NaN                   NaN                NaN
-
-...                       Nature Nucléaire Pompage Prévision J  \
-0         ...          Données consolidées         -     -50         NaN
-1         ...          Données consolidées       NaN     NaN         NaN
-2         ...          Données consolidées         -     -53         NaN
-3         ...          Données consolidées       NaN     NaN         NaN
-4         ...          Données consolidées         -     -54         NaN
-
-Prévision J-1 Périmètre Solaire Taux de Co2  Thermique            Datetime
-0            NaN  Bretagne       0         NaN        140 2016-01-01 00:00:00
-1            NaN  Bretagne     NaN         NaN        NaN 2016-01-01 00:15:00
-2            NaN  Bretagne       0         NaN        141 2016-01-01 00:30:00
-3            NaN  Bretagne     NaN         NaN        NaN 2016-01-01 00:45:00
-4            NaN  Bretagne       0         NaN        140 2016-01-01 01:00:00
-
-[5 rows x 38 columns]
+Ech. physiques            Datetime
+0          -9268 2016-01-01 00:00:00
+1            NaN 2016-01-01 00:15:00
+2          -9365 2016-01-01 00:30:00
+3            NaN 2016-01-01 00:45:00
+4          -9255 2016-01-01 01:00:00
 </pre>
 
 <p>
 As all the regions are in the same columns, I have used a pivot table to get 1
 column per region for each 'Datetime' (1 column for each of 12 regions). Additionally, it is important to set the timezone to UTC in order to account for
-daylight saving time change so as to avoid removing data or introduce NA.
+daylight saving time change and avoid removing data or introducing NAs.
 </p>
 
 <div class="org-src-container">
@@ -404,6 +399,7 @@ daylight saving time change so as to avoid removing data or introduce NA.
     data, values=<span style="color: #2d9574;">'Consommation'</span>, index=<span style="color: #2d9574;">'Datetime'</span>, columns=<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">'P&#233;rim&#232;tre'</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
 <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Set timezone as it creates problem when changing between daylight saving times.</span>
 <span style="color: #7590db;">consommation</span> = consommation.tz_localize<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">'UTC'</span>, ambiguous=<span style="color: #a45bad;">False</span><span style="color: #4f97d7;">)</span>
+<span style="color: #7590db;">consommation</span> = consommation.resample<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">'30T'</span><span style="color: #4f97d7;">)</span>.mean<span style="color: #4f97d7;">()</span>
 
 consommation.head<span style="color: #4f97d7;">()</span>
 </pre>
@@ -413,46 +409,46 @@ consommation.head<span style="color: #4f97d7;">()</span>
 Périmètre                  Auvergne-Rhône-Alpes  Bourgogne-Franche-Comté  \
 Datetime
 2013-01-01 00:00:00+00:00                   NaN                      NaN
-2013-01-01 00:15:00+00:00                   NaN                      NaN
 2013-01-01 00:30:00+00:00                8173.0                   2357.0
-2013-01-01 00:45:00+00:00                   NaN                      NaN
 2013-01-01 01:00:00+00:00                7944.0                   2289.0
+2013-01-01 01:30:00+00:00                7896.0                   2326.0
+2013-01-01 02:00:00+00:00                7882.0                   2409.0
 
 Périmètre                  Bretagne  Centre-Val de Loire  Grand-Est  \
 Datetime
 2013-01-01 00:00:00+00:00       NaN                  NaN        NaN
-2013-01-01 00:15:00+00:00       NaN                  NaN        NaN
 2013-01-01 00:30:00+00:00    3050.0               2476.0     4943.0
-2013-01-01 00:45:00+00:00       NaN                  NaN        NaN
 2013-01-01 01:00:00+00:00    2866.0               2319.0     4811.0
+2013-01-01 01:30:00+00:00    2735.0               2560.0     4840.0
+2013-01-01 02:00:00+00:00    2874.0               2395.0     4897.0
 
 Périmètre                  Hauts-de-France  Ile-de-France  Normandie  \
 Datetime
 2013-01-01 00:00:00+00:00              NaN            NaN        NaN
-2013-01-01 00:15:00+00:00              NaN            NaN        NaN
 2013-01-01 00:30:00+00:00           5989.0         9134.0     3683.0
-2013-01-01 00:45:00+00:00              NaN            NaN        NaN
 2013-01-01 01:00:00+00:00           5832.0         8822.0     3549.0
+2013-01-01 01:30:00+00:00           5926.0         8499.0     3570.0
+2013-01-01 02:00:00+00:00           5695.0         8229.0     3569.0
 
 Périmètre                  Nouvelle-Aquitaine  Occitanie    PACA  \
 Datetime
 2013-01-01 00:00:00+00:00                 NaN        NaN     NaN
-2013-01-01 00:15:00+00:00                 NaN        NaN     NaN
 2013-01-01 00:30:00+00:00              5464.0     5228.0  5570.0
-2013-01-01 00:45:00+00:00                 NaN        NaN     NaN
 2013-01-01 01:00:00+00:00              5422.0     4955.0  5698.0
+2013-01-01 01:30:00+00:00              5514.0     4888.0  5680.0
+2013-01-01 02:00:00+00:00              5443.0     4881.0  5577.0
 
 Périmètre                  Pays-de-la-Loire
 Datetime
 2013-01-01 00:00:00+00:00               NaN
-2013-01-01 00:15:00+00:00               NaN
 2013-01-01 00:30:00+00:00            3595.0
-2013-01-01 00:45:00+00:00               NaN
 2013-01-01 01:00:00+00:00            3359.0
+2013-01-01 01:30:00+00:00            3313.0
+2013-01-01 02:00:00+00:00            3383.0
 </pre>
 
 <p>
-Here are the resulting time series for each of the 12 regions. We can see some
+In those 12 time series we can see some
 outliers at the beginning of September 2017 where the data is close to 0. Those
 gaps are expected as this data was not yet consolidated.
 </p>
@@ -465,10 +461,9 @@ gaps are expected as this data was not yet consolidated.
 fig.set_size_inches<span style="color: #4f97d7;">(</span><span style="color: #a45bad;">18</span>,<span style="color: #a45bad;">13</span><span style="color: #4f97d7;">)</span>
 <span style="color: #7590db;">i</span> = <span style="color: #a45bad;">0</span>
 <span style="color: #7590db;">row</span> = <span style="color: #a45bad;">0</span>
-<span style="color: #7590db;">cons</span> = consommation.resample<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">'30T'</span><span style="color: #4f97d7;">)</span>.mean<span style="color: #4f97d7;">()</span>
-<span style="color: #4f97d7; font-weight: bold;">for</span> column <span style="color: #4f97d7; font-weight: bold;">in</span> cons.columns:
+<span style="color: #4f97d7; font-weight: bold;">for</span> column <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.columns:
     <span style="color: #7590db;">col</span> = i % <span style="color: #a45bad;">3</span>
-    cons<span style="color: #4f97d7;">[</span>column<span style="color: #4f97d7;">]</span>.plot<span style="color: #4f97d7;">(</span>ax=ax<span style="color: #bc6ec5;">[</span>row, col<span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
+    consommation<span style="color: #4f97d7;">[</span>column<span style="color: #4f97d7;">]</span>.plot<span style="color: #4f97d7;">(</span>ax=ax<span style="color: #bc6ec5;">[</span>row, col<span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
     <span style="color: #7590db;">i</span> += <span style="color: #a45bad;">1</span>
     <span style="color: #4f97d7; font-weight: bold;">if</span> col == <span style="color: #a45bad;">2</span>:
         <span style="color: #7590db;">row</span> += <span style="color: #a45bad;">1</span>
@@ -483,14 +478,14 @@ fig.set_size_inches<span style="color: #4f97d7;">(</span><span style="color: #a4
 
 <p>
 In order to make sure we are using
-clean data, I have selected all records from the 2nd of January 2013 (1st
+clean data, I have decided to use the records from the 2nd of January 2013 (1st
 doesn't have data for midnight) to the 2nd of January 2017.
 </p>
 
 <p>
 Furthermore, a second pivot table was used in order to create a column for each
 30 minutes of the day. This resulted in a table composed of 576 daily time
-series (48 for each of the 12 regions
+series (48 for each of the 12 regions) over 1455 days.
 </p>
 
 <div class="org-src-container">
@@ -501,10 +496,11 @@ series (48 for each of the 12 regions
 <span style="color: #7590db;">consommation</span> = pd.pivot_table<span style="color: #4f97d7;">(</span>pd.melt<span style="color: #bc6ec5;">(</span>consommation, id_vars=<span style="color: #2d9574;">[</span><span style="color: #2d9574;">"date"</span>, <span style="color: #2d9574;">"time"</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span>,
                               index=<span style="color: #2d9574;">"date"</span>, values=<span style="color: #2d9574;">"value"</span>, columns=<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">"P&#233;rim&#232;tre"</span>, <span style="color: #2d9574;">"time"</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
 
-<span style="color: #7590db;">consommation</span> = consommation.loc<span style="color: #4f97d7;">[</span>datetime.date<span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">2013</span>,<span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">)</span>:datetime.date<span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">2017</span>,<span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">)</span>, :<span style="color: #4f97d7;">]</span>
+<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">consommation = consommation.loc[datetime.date(2013,1,2):datetime.date(2017,1,2), :]</span>
+<span style="color: #7590db;">consommation</span> = consommation.loc<span style="color: #4f97d7;">[</span>datetime.date<span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">2013</span>,<span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">)</span>:, :<span style="color: #4f97d7;">]</span>
 
 <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Get rid of the 15 minutes columns (columns with nans)</span>
-<span style="color: #7590db;">consommation</span> = consommation.loc<span style="color: #4f97d7;">[</span>:,consommation.isnull<span style="color: #bc6ec5;">()</span>.<span style="color: #4f97d7;">sum</span><span style="color: #bc6ec5;">()</span>!=consommation.shape<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">]</span>
+<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">consommation = consommation.loc[:,consommation.isnull().sum()!=consommation.shape[0]]</span>
 
 consommation.head<span style="color: #4f97d7;">()</span>
 </pre>
@@ -562,65 +558,33 @@ series for each of the regions and get rid of all the 'missing' values.
 </div>
 
 <pre class="example">
-Data dimensions:  (1455, 576)
+Data dimensions:  (1794, 576)
 Number of NA values:  0
 
 </pre>
 
+<p>
+As you can see, this gives us a matrix of 1794 rows (days) and 576 columns (48
+half-hour of each 12 regions per day), with no NA values.
+</p>
+
+<p>
+This data is now saved into a csv to read from R.
+</p>
+
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Save to access from R</span>
+<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Merge multi index column names to read in R</span>
+<span style="color: #7590db;">consommation.columns</span> = <span style="color: #4f97d7;">[</span>col<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span> + <span style="color: #2d9574;">'_'</span> + <span style="color: #4f97d7;">str</span><span style="color: #bc6ec5;">(</span>col<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span> <span style="color: #4f97d7; font-weight: bold;">for</span> col <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.columns.values<span style="color: #4f97d7;">]</span>
+<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Save to access from R</span>
 consommation.to_csv<span style="color: #4f97d7;">(</span>join<span style="color: #bc6ec5;">(</span>data_path, <span style="color: #2d9574;">"consommation.csv"</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
-<span style="color: #7590db;">consommation</span> = pd.read_csv<span style="color: #4f97d7;">(</span>join<span style="color: #bc6ec5;">(</span>data_path, <span style="color: #2d9574;">"consommation.csv"</span><span style="color: #bc6ec5;">)</span>,index_col=<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span>, header=<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span>,<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
-
-consommation.head<span style="color: #4f97d7;">()</span>
-</pre>
-</div>
-
-<pre class="example">
-Périmètre  Auvergne-Rhône-Alpes                                               \
-time                   00:00:00 00:30:00 01:00:00 01:30:00 02:00:00 02:30:00
-date
-2013-01-02               7847.0   7674.0   7427.0   7441.0   7467.0   7550.0
-2013-01-03               9028.0   8839.0   8544.0   8560.0   8569.0   8667.0
-2013-01-04               8982.0   8754.0   8476.0   8480.0   8453.0   8554.0
-2013-01-05               8625.0   8465.0   8165.0   8134.0   8087.0   8149.0
-2013-01-06               8314.0   8097.0   7814.0   7791.0   7785.0   7842.0
-
-Périmètre                                        ...    Pays-de-la-Loire  \
-time       03:00:00 03:30:00 04:00:00 04:30:00   ...            19:00:00
-date                                             ...
-2013-01-02   7434.0   7371.0   7233.0   7311.0   ...              4336.0
-2013-01-03   8559.0   8483.0   8390.0   8392.0   ...              4279.0
-2013-01-04   8436.0   8386.0   8224.0   8195.0   ...              4181.0
-2013-01-05   7974.0   7897.0   7713.0   7597.0   ...              3877.0
-2013-01-06   7670.0   7605.0   7418.0   7352.0   ...              3854.0
-
-Périmètre                                                                  \
-time       19:30:00 20:00:00 20:30:00 21:00:00 21:30:00 22:00:00 22:30:00
-date
-2013-01-02   4228.0   4079.0   3923.0   3756.0   3565.0   3457.0   3510.0
-2013-01-03   4166.0   4038.0   3862.0   3712.0   3463.0   3308.0   3394.0
-2013-01-04   4123.0   3946.0   3755.0   3597.0   3559.0   3412.0   3456.0
-2013-01-05   3786.0   3696.0   3540.0   3449.0   3296.0   3221.0   3296.0
-2013-01-06   3834.0   3826.0   3771.0   3631.0   3494.0   3423.0   3420.0
-
-Périmètre
-time       23:00:00 23:30:00
-date
-2013-01-02   4003.0   3710.0
-2013-01-03   3909.0   3700.0
-2013-01-04   3903.0   3662.0
-2013-01-05   3864.0   3700.0
-2013-01-06   3942.0   3717.0
-
-[5 rows x 576 columns]
+<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">consommation = pd.read_csv(join(data_path, "consommation.csv"),index_col=[0], header=[0,1])</span>
 </pre>
 </div>
 </div>
+</div>
 
-
-<div id="outline-container-org1ea7564" class="outline-4">
-<h4 id="org1ea7564"><span class="section-number-4">1.1.2</span> In R (NOT USED ANYMORE!)</h4>
+<div id="outline-container-orgf8db94b" class="outline-4">
+<h4 id="orgf8db94b"><span class="section-number-4">1.1.2</span> In R (NOT USED ANYMORE!)</h4>
 <div class="outline-text-4" id="text-1-1-2">
 <div class="org-src-container">
 <pre class="src src-R"><span style="color: #a45bad;">library</span><span style="color: #4f97d7;">(</span>tidyverse<span style="color: #4f97d7;">)</span>
@@ -789,46 +753,148 @@ sum<span style="color: #4f97d7;">(</span>is.na<span style="color: #bc6ec5;">(</s
 </div>
 
 
-<div id="outline-container-org6a6796d" class="outline-3">
-<h3 id="org6a6796d"><span class="section-number-3">1.2</span> Transform the data</h3>
+<div id="outline-container-org63bf2b4" class="outline-3">
+<h3 id="org63bf2b4"><span class="section-number-3">1.2</span> Transform the data</h3>
 <div class="outline-text-3" id="text-1-2">
 </div>
-<div id="outline-container-orgd2af660" class="outline-4">
-<h4 id="orgd2af660"><span class="section-number-4">1.2.1</span> In Python</h4>
+<div id="outline-container-org31f5910" class="outline-4">
+<h4 id="org31f5910"><span class="section-number-4">1.2.1</span> Stationarity</h4>
 <div class="outline-text-4" id="text-1-2-1">
+<p>
+As all the series are daily values there is a strong weekly seasonality within
+the raw values. Looking at the decomposition of one of the series, we can also
+clearly see the yearly seasonality.
+</p>
+
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> inspect
+<pre class="src src-R"><span style="color: #a45bad;">library</span><span style="color: #4f97d7;">(</span>tidyverse<span style="color: #4f97d7;">)</span>
+<span style="color: #a45bad;">library</span><span style="color: #4f97d7;">(</span>xts<span style="color: #4f97d7;">)</span>
 
-<span style="color: #4f97d7; font-weight: bold;">import</span> itertools
-<span style="color: #4f97d7; font-weight: bold;">import</span> pickle
-<span style="color: #4f97d7; font-weight: bold;">import</span> numpy <span style="color: #4f97d7; font-weight: bold;">as</span> np
-<span style="color: #4f97d7; font-weight: bold;">import</span> scipy.cluster.hierarchy <span style="color: #4f97d7; font-weight: bold;">as</span> hcl
-<span style="color: #4f97d7; font-weight: bold;">from</span> scipy.spatial.distance <span style="color: #4f97d7; font-weight: bold;">import</span> squareform
-<span style="color: #4f97d7; font-weight: bold;">from</span> statsmodels.tsa.stattools <span style="color: #4f97d7; font-weight: bold;">import</span> adfuller, pacf    
-<span style="color: #4f97d7; font-weight: bold;">import</span> statsmodels.tsa.ar_model <span style="color: #4f97d7; font-weight: bold;">as</span> ar
-<span style="color: #4f97d7; font-weight: bold;">import</span> statsmodels.tsa.api <span style="color: #4f97d7; font-weight: bold;">as</span> smt
 
-<span style="color: #4f97d7; font-weight: bold;">import</span> src.helpers <span style="color: #4f97d7; font-weight: bold;">as</span> helpers
+consommation <span style="color: #a45bad;">&lt;-</span> read.csv<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">'./data/consommation.csv'</span>, row.names=<span style="color: #2d9574;">'date'</span><span style="color: #4f97d7;">)</span>
+
+<span style="color: #2aa1ae; background-color: #292e34;">## </span><span style="color: #2aa1ae; background-color: #292e34;">consommation &lt;- xts(consommation, order.by = as.Date(as.POSIXct(parse_date(rownames(consommation)))))</span>
+
+ts1 = ts<span style="color: #4f97d7;">(</span>consommation<span style="color: #bc6ec5;">[</span>,<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span>, frequency = <span style="color: #a45bad;">375</span>, start = <span style="color: #a45bad;">2013</span><span style="color: #4f97d7;">)</span>
+plot<span style="color: #4f97d7;">(</span>decompose<span style="color: #bc6ec5;">(</span>ts1<span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
 </pre>
 </div>
 
+
+<div class="figure">
+<p><img src="./img/decompose_R.png" alt="decompose_R.png" />
+</p>
+</div>
+
+<p>
+In order to transform the data to stationary series, we need to study the
+ autocorrelation function. The black lines show the autocorrelation function until lag 100
+ of each individual series, while the red one is the function of the mean of the
+ series. That first autocorrelation clearly shows the weekly seasonality.
+</p>
+
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">consommation</span> = pd.read_csv<span style="color: #4f97d7;">(</span>join<span style="color: #bc6ec5;">(</span>data_path, <span style="color: #2d9574;">'consommation.csv'</span><span style="color: #bc6ec5;">)</span>, header=<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span>,<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span>, index_col=<span style="color: #a45bad;">0</span><span style="color: #4f97d7;">)</span>
+<pre class="src src-R">plot<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>consommation<span style="color: #2d9574;">[</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, lag=<span style="color: #a45bad;">100</span><span style="color: #bc6ec5;">)</span>, type=<span style="color: #2d9574;">"l"</span>, max.mfrow=<span style="color: #a45bad;">1</span>, ylim=c<span style="color: #bc6ec5;">(</span>-<span style="color: #a45bad;">0.4</span>, <span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+<span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #4f97d7;">(</span>i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #a45bad;">2</span>:dim<span style="color: #bc6ec5;">(</span>consommation<span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">){</span>
+  lines<span style="color: #bc6ec5;">(</span>acf<span style="color: #2d9574;">(</span>consommation<span style="color: #67b11d;">[</span>,i<span style="color: #67b11d;">]</span>, lag=<span style="color: #a45bad;">100</span>, plot=<span style="color: #ce537a; font-weight: bold;">FALSE</span><span style="color: #2d9574;">)</span>$acf<span style="color: #2d9574;">[</span>-<span style="color: #a45bad;">1</span>, <span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, lty=<span style="color: #a45bad;">1</span>, lwd=<span style="color: #a45bad;">0.1</span>, alpha=<span style="color: #a45bad;">0.8</span><span style="color: #bc6ec5;">)</span>
+<span style="color: #4f97d7;">}</span>
+lines<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>rowMeans<span style="color: #2d9574;">(</span>consommation<span style="color: #2d9574;">)</span>, lag=<span style="color: #a45bad;">100</span>, plot=<span style="color: #ce537a; font-weight: bold;">FALSE</span><span style="color: #bc6ec5;">)</span>$acf<span style="color: #bc6ec5;">[</span>-<span style="color: #a45bad;">1</span>, <span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span>, lty=<span style="color: #a45bad;">1</span>, lwd=<span style="color: #a45bad;">2</span>, col=<span style="color: #2d9574;">'red'</span><span style="color: #4f97d7;">)</span>
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="./img/acf0_R.png" alt="acf0_R.png" />
+</p>
+</div>
+
+<p>
+To try and remove it, I have taken the weekly difference (difference between all
+the values separated by 7 days). Now there is still some correlation, but it is better.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-R">consommation = diff<span style="color: #4f97d7;">(</span>as.matrix<span style="color: #bc6ec5;">(</span>consommation<span style="color: #bc6ec5;">)</span>, <span style="color: #a45bad;">7</span><span style="color: #4f97d7;">)</span>
+plot<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>consommation<span style="color: #2d9574;">[</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, lag=<span style="color: #a45bad;">100</span><span style="color: #bc6ec5;">)</span>, type=<span style="color: #2d9574;">"l"</span>, max.mfrow=<span style="color: #a45bad;">1</span>, ylim=c<span style="color: #bc6ec5;">(</span>-<span style="color: #a45bad;">0.4</span>, <span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+<span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #4f97d7;">(</span>i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #a45bad;">2</span>:dim<span style="color: #bc6ec5;">(</span>consommation<span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">){</span>
+  lines<span style="color: #bc6ec5;">(</span>acf<span style="color: #2d9574;">(</span>consommation<span style="color: #67b11d;">[</span>,i<span style="color: #67b11d;">]</span>, lag=<span style="color: #a45bad;">100</span>, plot=<span style="color: #ce537a; font-weight: bold;">FALSE</span><span style="color: #2d9574;">)</span>$acf<span style="color: #2d9574;">[</span>-<span style="color: #a45bad;">1</span>, <span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, lty=<span style="color: #a45bad;">1</span>, lwd=<span style="color: #a45bad;">0.1</span>, alpha=<span style="color: #a45bad;">0.8</span><span style="color: #bc6ec5;">)</span>
+<span style="color: #4f97d7;">}</span>
+lines<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>rowMeans<span style="color: #2d9574;">(</span>consommation<span style="color: #2d9574;">)</span>, lag=<span style="color: #a45bad;">100</span>, plot=<span style="color: #ce537a; font-weight: bold;">FALSE</span><span style="color: #bc6ec5;">)</span>$acf<span style="color: #bc6ec5;">[</span>-<span style="color: #a45bad;">1</span>, <span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span>, lty=<span style="color: #a45bad;">1</span>, lwd=<span style="color: #a45bad;">2</span>, col=<span style="color: #2d9574;">'red'</span><span style="color: #4f97d7;">)</span>
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="./img/acf1_R.png" alt="acf1_R.png" />
+</p>
+</div>
+
+<p>
+So as to get as close stationarity as possible without loosing too much data, I
+have taken another difference, but this time only 1 day. Now, most of the values
+stay within the confidence interval.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-R">consommation = diff<span style="color: #4f97d7;">(</span>consommation, <span style="color: #a45bad;">1</span><span style="color: #4f97d7;">)</span>
+plot<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>consommation<span style="color: #2d9574;">[</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, lag=<span style="color: #a45bad;">100</span><span style="color: #bc6ec5;">)</span>, type=<span style="color: #2d9574;">"l"</span>, max.mfrow=<span style="color: #a45bad;">1</span>, ylim=c<span style="color: #bc6ec5;">(</span>-<span style="color: #a45bad;">0.4</span>, <span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+<span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #4f97d7;">(</span>i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #a45bad;">2</span>:dim<span style="color: #bc6ec5;">(</span>consommation<span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">){</span>
+  lines<span style="color: #bc6ec5;">(</span>acf<span style="color: #2d9574;">(</span>consommation<span style="color: #67b11d;">[</span>,i<span style="color: #67b11d;">]</span>, lag=<span style="color: #a45bad;">100</span>, plot=<span style="color: #ce537a; font-weight: bold;">FALSE</span><span style="color: #2d9574;">)</span>$acf<span style="color: #2d9574;">[</span>-<span style="color: #a45bad;">1</span>, <span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, lty=<span style="color: #a45bad;">1</span>, lwd=<span style="color: #a45bad;">0.1</span>, alpha=<span style="color: #a45bad;">0.8</span><span style="color: #bc6ec5;">)</span>
+<span style="color: #4f97d7;">}</span>
+lines<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>rowMeans<span style="color: #2d9574;">(</span>consommation<span style="color: #2d9574;">)</span>, lag=<span style="color: #a45bad;">100</span>, plot=<span style="color: #ce537a; font-weight: bold;">FALSE</span><span style="color: #bc6ec5;">)</span>$acf<span style="color: #bc6ec5;">[</span>-<span style="color: #a45bad;">1</span>, <span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span>, lty=<span style="color: #a45bad;">1</span>, lwd=<span style="color: #a45bad;">2</span>, col=<span style="color: #2d9574;">'red'</span><span style="color: #4f97d7;">)</span>
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="./img/acf17_R.png" alt="acf17_R.png" />
+</p>
+</div>
+
+<p>
+I have then used the Dickey-Fuller test on all the series and confirmed that
+all the series are now significantly stationary (all p-values lower than 0.01).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-R"><span style="color: #a45bad;">library</span><span style="color: #4f97d7;">(</span>fpp<span style="color: #4f97d7;">)</span>
+
+max_p = <span style="color: #a45bad;">0</span>
+<span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #4f97d7;">(</span>i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #a45bad;">2</span>:dim<span style="color: #bc6ec5;">(</span>consommation<span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">){</span>
+  p = adf.test<span style="color: #bc6ec5;">(</span>consommation<span style="color: #2d9574;">[</span>,i<span style="color: #2d9574;">]</span>, alternative=<span style="color: #2d9574;">'stationary'</span><span style="color: #bc6ec5;">)</span>$p.value
+  <span style="color: #4f97d7; font-weight: bold;">if</span> <span style="color: #bc6ec5;">(</span>p &gt; max_p<span style="color: #bc6ec5;">){</span>
+    max_p <span style="color: #a45bad;">&lt;-</span> p
+  <span style="color: #bc6ec5;">}</span>
+<span style="color: #4f97d7;">}</span>
+print<span style="color: #4f97d7;">(</span>paste<span style="color: #bc6ec5;">(</span>c<span style="color: #2d9574;">(</span><span style="color: #2d9574;">'All values below'</span>, max_p<span style="color: #2d9574;">)</span>, collapse=<span style="color: #2d9574;">' '</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
 </pre>
 </div>
 
 <p>
-As all the series are daily values there is a strong weekly seasonality within
-the values, shown here with a strong 7 days autocorrelation.
+There were 50 or more warnings (use warnings() to see the first 50)
+[1] "All values below 0.01"
+</p>
+
+
+<p>
+In Python, I have done exactly the same thing and can see that we can the exact
+same autocorrelation function.
 </p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> statsmodels.tsa.stattools <span style="color: #4f97d7; font-weight: bold;">import</span> acf
+<span style="color: #4f97d7; font-weight: bold;">import</span> pandas <span style="color: #4f97d7; font-weight: bold;">as</span> pd
+<span style="color: #4f97d7; font-weight: bold;">import</span> matplotlib.pyplot <span style="color: #4f97d7; font-weight: bold;">as</span> plt
+%matplotlib inline
+
+<span style="color: #7590db;">consommation</span> = pd.read_csv<span style="color: #4f97d7;">(</span>join<span style="color: #bc6ec5;">(</span>data_path, <span style="color: #2d9574;">'consommation.csv'</span><span style="color: #bc6ec5;">)</span>, index_col=<span style="color: #a45bad;">0</span><span style="color: #4f97d7;">)</span>
+<span style="color: #7590db;">consommation</span> = consommation.diff<span style="color: #4f97d7;">(</span><span style="color: #a45bad;">1</span><span style="color: #4f97d7;">)</span>.diff<span style="color: #4f97d7;">(</span><span style="color: #a45bad;">7</span><span style="color: #4f97d7;">)</span>.iloc<span style="color: #4f97d7;">[</span><span style="color: #a45bad;">8</span>:,:<span style="color: #4f97d7;">]</span>
 
 plt.figure<span style="color: #4f97d7;">()</span>
 <span style="color: #7590db;">ax</span> = plt.gca<span style="color: #4f97d7;">()</span>
 <span style="color: #4f97d7; font-weight: bold;">for</span> columns <span style="color: #4f97d7; font-weight: bold;">in</span> consommation:
-    plt.plot<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>consommation.loc<span style="color: #2d9574;">[</span>:,columns<span style="color: #2d9574;">]</span>.diff<span style="color: #2d9574;">(</span><span style="color: #a45bad;">7</span><span style="color: #2d9574;">)[</span><span style="color: #a45bad;">7</span>:<span style="color: #2d9574;">]</span>, nlags=<span style="color: #a45bad;">100</span><span style="color: #bc6ec5;">)</span>, alpha=<span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">05</span>, color=<span style="color: #2d9574;">"black"</span><span style="color: #4f97d7;">)</span>
+    plt.plot<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>consommation.loc<span style="color: #2d9574;">[</span>:,columns<span style="color: #2d9574;">]</span>, nlags=<span style="color: #a45bad;">100</span><span style="color: #bc6ec5;">)</span>, alpha=<span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">05</span>, color=<span style="color: #2d9574;">"black"</span><span style="color: #4f97d7;">)</span>
+plt.plot<span style="color: #4f97d7;">(</span>acf<span style="color: #bc6ec5;">(</span>consommation.mean<span style="color: #2d9574;">(</span>axis=<span style="color: #a45bad;">1</span><span style="color: #2d9574;">)</span>, nlags=<span style="color: #a45bad;">100</span><span style="color: #bc6ec5;">)</span>, color=<span style="color: #2d9574;">'red'</span><span style="color: #4f97d7;">)</span>
 ax.set_xlabel<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">"Lag"</span><span style="color: #4f97d7;">)</span>
 ax.set_ylabel<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">"Autocorrelation"</span><span style="color: #4f97d7;">)</span>
 </pre>
@@ -840,21 +906,19 @@ Text(0,0.5,'Autocorrelation')
 </pre>
 
 <div class="figure">
-<p><img src="./img/7dayACF.png" alt="7dayACF.png" />
+<p><img src="./img/acf_python.png" alt="acf_python.png" />
 </p>
 </div>
 
 <p>
-To remove that seasonality, the change from one day to the one 7days later was
-calculated, making all of the 576 significantly stationary, as the maximum p
-value observed using the Dickey-Fuller test is much less than 0.05 (with
-magnitude order of 10<sup>-7</sup>).
+In Python is was possible to get the exact p-values and show that the largest
+p-value is actually of order 10<sup>-22</sup>.
 </p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> statsmodels.tsa.stattools <span style="color: #4f97d7; font-weight: bold;">import</span> adfuller
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">test_stationarity</span><span style="color: #4f97d7;">(</span>timeseries<span style="color: #4f97d7;">)</span>:
+<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">test_stationarity</span><span style="color: #4f97d7;">(</span>timeseries<span style="color: #4f97d7;">)</span>
     <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Perform Dickey-Fuller test:</span>
     <span style="color: #7590db;">dftest</span> = adfuller<span style="color: #4f97d7;">(</span>timeseries, autolag=<span style="color: #2d9574;">"AIC"</span><span style="color: #4f97d7;">)</span>
     <span style="color: #7590db;">dfoutput</span> = pd.Series<span style="color: #4f97d7;">(</span>dftest<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span>:<span style="color: #a45bad;">4</span><span style="color: #bc6ec5;">]</span>, index=<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">'Test Statistic'</span>, <span style="color: #2d9574;">'p-value'</span>, <span style="color: #2d9574;">'#Lags Used'</span>, <span style="color: #2d9574;">'Number of Observations Used'</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
@@ -862,48 +926,43 @@ magnitude order of 10<sup>-7</sup>).
         <span style="color: #7590db;">dfoutput</span><span style="color: #4f97d7;">[</span><span style="color: #2d9574;">'Critical Value (%s)'</span> % key<span style="color: #4f97d7;">]</span> = value
     <span style="color: #4f97d7; font-weight: bold;">return</span> dfoutput
 
-<span style="color: #7590db;">consommation</span> = consommation.diff<span style="color: #4f97d7;">(</span><span style="color: #a45bad;">7</span><span style="color: #4f97d7;">)[</span><span style="color: #a45bad;">7</span>:<span style="color: #4f97d7;">]</span>
-
 <span style="color: #7590db;">p_values</span> = consommation.<span style="color: #4f97d7;">apply</span><span style="color: #4f97d7;">(</span><span style="color: #4f97d7; font-weight: bold;">lambda</span> x: test_stationarity<span style="color: #bc6ec5;">(</span>x<span style="color: #bc6ec5;">)[</span><span style="color: #2d9574;">"p-value"</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
 p_values.<span style="color: #4f97d7;">max</span><span style="color: #4f97d7;">()</span>
 </pre>
 </div>
 
 <pre class="example">
-2.1260321435185846e-07
+1.6017214722257996e-22
 
 </pre>
+</div>
+</div>
+
+<div id="outline-container-orgc74d7a1" class="outline-4">
+<h4 id="orgc74d7a1"><span class="section-number-4">1.2.2</span> Data standardisation</h4>
+<div class="outline-text-4" id="text-1-2-2">
+<p>
+In order to standardise the data and get a mean of 0 and standard deviation of
+1, the z-score was applied to each individual series.
+</p>
 
 <p>
-Here is the distribution of the inter-quantile p values. 
+\[Z = \frac{x - \mu}{\sigma}\]
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> seaborn <span style="color: #4f97d7; font-weight: bold;">as</span> sns
-sns.distplot<span style="color: #4f97d7;">(</span>p_values<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">(</span>p_values &gt; p_values.quantile<span style="color: #67b11d;">(</span><span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">25</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span> &amp; <span style="color: #2d9574;">(</span>p_values &lt; p_values.quantile<span style="color: #67b11d;">(</span><span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">75</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">]</span>, kde=<span style="color: #a45bad;">False</span><span style="color: #4f97d7;">)</span>
+<pre class="src src-R">consommation <span style="color: #a45bad;">&lt;-</span> scale<span style="color: #4f97d7;">(</span>consommation<span style="color: #4f97d7;">)</span>
+
+print<span style="color: #4f97d7;">(</span>mean<span style="color: #bc6ec5;">(</span>consommation<span style="color: #2d9574;">[</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+print<span style="color: #4f97d7;">(</span>sd<span style="color: #bc6ec5;">(</span>consommation<span style="color: #2d9574;">[</span>,<span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
 </pre>
 </div>
 
-<pre class="example">
-&lt;matplotlib.axes._subplots.AxesSubplot at 0x11d25cb00&gt;
-
-</pre>
-
-<div class="figure">
-<p><img src="pValuesStationarity.png" alt="pValuesStationarity.png" />
-</p>
-</div>
-
-
-
 <p>
-Data was transformed using z-score and weekly differential
+[1] -2.064756e-17
+[1] 1
 </p>
 
-
-<p>
-\[z = \frac{x - \mu}{\sigma}\]
-</p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> scipy.stats.mstats <span style="color: #4f97d7; font-weight: bold;">import</span> zscore
@@ -917,7 +976,7 @@ Data was transformed using z-score and weekly differential
 </div>
 
 <p>
-Mean of z score is between -2.33490203117e-16  and  6.55298648487e-16
+Mean of z score is between -3.45623741149e-17  and  2.94650455584e-17
 </p>
 
 <div class="org-src-container">
@@ -926,105 +985,229 @@ Mean of z score is between -2.33490203117e-16  and  6.55298648487e-16
 </div>
 
 <p>
-Std of z score is between 1.00034381985  and  1.00034381985
+Std of z score is between 1.00028007282  and  1.00028007282
 </p>
 </div>
 </div>
 </div>
 </div>
 
-<div id="outline-container-org5bc4ccd" class="outline-2">
-<h2 id="org5bc4ccd"><span class="section-number-2">2</span> Calculation of GCC</h2>
+<div id="outline-container-orge2977d1" class="outline-2">
+<h2 id="orge2977d1"><span class="section-number-2">2</span> Calculation of GCC</h2>
 <div class="outline-text-2" id="text-2">
+</div>
+<div id="outline-container-orgd415fe9" class="outline-3">
+<h3 id="orgd415fe9"><span class="section-number-3">2.1</span> Selection of k</h3>
+<div class="outline-text-3" id="text-2-1">
+</div>
+<div id="outline-container-org97737ab" class="outline-4">
+<h4 id="org97737ab"><span class="section-number-4">2.1.1</span> PACF</h4>
+<div class="outline-text-4" id="text-2-1-1">
+<p>
+At first I decided to check for the order of AR from our times series by
+looking at the 'partial autocorrelation function', which is the autocorrelation
+of the series but controlling for the correlations between values at shorter
+lags.
+</p>
+
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">gets the lag first lags that gives negative pacf</span>
-<span style="color: #7590db;">k</span> = np.<span style="color: #4f97d7;">max</span><span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">[</span>np.where<span style="color: #2d9574;">(</span>pacf<span style="color: #67b11d;">(</span>consommation.loc<span style="color: #b1951d;">[</span>:, colname<span style="color: #b1951d;">]</span><span style="color: #67b11d;">)</span> &lt; <span style="color: #a45bad;">0</span><span style="color: #2d9574;">)[</span><span style="color: #a45bad;">0</span><span style="color: #2d9574;">][</span><span style="color: #a45bad;">0</span><span style="color: #2d9574;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> colname, col <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.iteritems<span style="color: #2d9574;">()</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
-k
+<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> statsmodels.tsa.stattools <span style="color: #4f97d7; font-weight: bold;">import</span> pacf    
+
+plt.figure<span style="color: #4f97d7;">()</span>
+<span style="color: #7590db;">ax</span> = plt.gca<span style="color: #4f97d7;">()</span>
+<span style="color: #7590db;">all_pacf</span> = np.array<span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">[</span>pacf<span style="color: #2d9574;">(</span>consommation.loc<span style="color: #67b11d;">[</span>:,columns<span style="color: #67b11d;">]</span>, nlags=<span style="color: #a45bad;">100</span><span style="color: #2d9574;">)</span> <span style="color: #4f97d7; font-weight: bold;">for</span> columns <span style="color: #4f97d7; font-weight: bold;">in</span> consommation<span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
+plt.axhline<span style="color: #4f97d7;">(</span><span style="color: #a45bad;">1</span>.<span style="color: #a45bad;">96</span>/np.sqrt<span style="color: #bc6ec5;">(</span><span style="color: #4f97d7;">len</span><span style="color: #2d9574;">(</span>mean_pacf<span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span>, color=<span style="color: #2d9574;">'red'</span><span style="color: #4f97d7;">)</span>
+plt.axhline<span style="color: #4f97d7;">(</span>-<span style="color: #a45bad;">1</span>.<span style="color: #a45bad;">96</span>/np.sqrt<span style="color: #bc6ec5;">(</span><span style="color: #4f97d7;">len</span><span style="color: #2d9574;">(</span>mean_pacf<span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span>, color=<span style="color: #2d9574;">'red'</span><span style="color: #4f97d7;">)</span>
+<span style="color: #4f97d7; font-weight: bold;">for</span> p <span style="color: #4f97d7; font-weight: bold;">in</span> all_pacf:
+    plt.plot<span style="color: #4f97d7;">(</span>p, alpha=<span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">05</span>, color=<span style="color: #2d9574;">"black"</span><span style="color: #4f97d7;">)</span>
+plt.plot<span style="color: #4f97d7;">(</span>pacf<span style="color: #bc6ec5;">(</span>consommation.mean<span style="color: #2d9574;">(</span>axis=<span style="color: #a45bad;">1</span><span style="color: #2d9574;">)</span>, nlags=<span style="color: #a45bad;">100</span><span style="color: #bc6ec5;">)</span>, color=<span style="color: #2d9574;">'red'</span><span style="color: #4f97d7;">)</span>
+ax.set_xlabel<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">"Lag"</span><span style="color: #4f97d7;">)</span>
+ax.set_ylabel<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">"Partial Autocorrelation"</span><span style="color: #4f97d7;">)</span>
 </pre>
 </div>
 
 <pre class="example">
-5
+Text(0,0.5,'Partial Autocorrelation')
+
+</pre>
+
+<div class="figure">
+<p><img src="./img/pacf_python.png" alt="pacf_python.png" />
+</p>
+</div>
+
+<p>
+I then looked at those local minimums (for each 10 lag interval) by first getting the minimums of the mean
+pacf (red line).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #7590db;">mean_pacf</span> = pacf<span style="color: #4f97d7;">(</span>consommation.mean<span style="color: #bc6ec5;">(</span>axis=<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">)</span>.values, nlags=<span style="color: #a45bad;">100</span><span style="color: #4f97d7;">)</span>
+<span style="color: #7590db;">orders</span> = <span style="color: #4f97d7;">[</span>r<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span> + mean_pacf<span style="color: #bc6ec5;">[</span>r<span style="color: #2d9574;">[</span><span style="color: #a45bad;">0</span><span style="color: #2d9574;">]</span> : r<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">]</span>.argmin<span style="color: #bc6ec5;">()</span>
+ <span style="color: #4f97d7; font-weight: bold;">for</span> r <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">zip</span><span style="color: #bc6ec5;">(</span>np.arange<span style="color: #2d9574;">(</span><span style="color: #a45bad;">0</span>, <span style="color: #a45bad;">100</span>, <span style="color: #a45bad;">10</span><span style="color: #2d9574;">)</span>, np.arange<span style="color: #2d9574;">(</span><span style="color: #a45bad;">10</span>, <span style="color: #a45bad;">110</span>, <span style="color: #a45bad;">10</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">]</span>
+orders
+</pre>
+</div>
+
+<pre class="example">
+[7, 14, 21, 35, 42, 56, 63, 70, 84, 98]
 
 </pre>
 
 <p>
-Tried with max lag 40 but the GCC computation failed
+And then I checked the minimum across all the series, so as to make sure that
+the order was large enough for all series. The values are the same originally
+but deviate at larger lag. It seems that 21 is the largest significant order.
 </p>
+
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">k</span> = consommation.<span style="color: #4f97d7;">apply</span><span style="color: #4f97d7;">(</span><span style="color: #4f97d7; font-weight: bold;">lambda</span> x: ar.AR<span style="color: #bc6ec5;">(</span>x<span style="color: #bc6ec5;">)</span>.select_order<span style="color: #bc6ec5;">(</span>maxlag=<span style="color: #a45bad;">40</span>, ic=<span style="color: #2d9574;">"bic"</span>, trend=<span style="color: #2d9574;">"nc"</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>.<span style="color: #4f97d7;">max</span><span style="color: #4f97d7;">()</span>
+<pre class="src src-ipython"><span style="color: #7590db;">orders</span> = <span style="color: #4f97d7;">[</span>r<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span> + np.where<span style="color: #bc6ec5;">(</span>all_pacf<span style="color: #2d9574;">[</span>:, r<span style="color: #67b11d;">[</span><span style="color: #a45bad;">0</span><span style="color: #67b11d;">]</span>:r<span style="color: #67b11d;">[</span><span style="color: #a45bad;">1</span><span style="color: #67b11d;">]</span><span style="color: #2d9574;">]</span> == all_pacf<span style="color: #2d9574;">[</span>:, r<span style="color: #67b11d;">[</span><span style="color: #a45bad;">0</span><span style="color: #67b11d;">]</span>:r<span style="color: #67b11d;">[</span><span style="color: #a45bad;">1</span><span style="color: #67b11d;">]</span><span style="color: #2d9574;">]</span>.<span style="color: #4f97d7;">min</span><span style="color: #2d9574;">()</span><span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">][</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span>
+    <span style="color: #4f97d7; font-weight: bold;">for</span> r <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">zip</span><span style="color: #bc6ec5;">(</span>np.arange<span style="color: #2d9574;">(</span><span style="color: #a45bad;">0</span>, <span style="color: #a45bad;">100</span>, <span style="color: #a45bad;">10</span><span style="color: #2d9574;">)</span>, np.arange<span style="color: #2d9574;">(</span><span style="color: #a45bad;">10</span>, <span style="color: #a45bad;">110</span>, <span style="color: #a45bad;">10</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">]</span>
+orders
+</pre>
+</div>
+
+<pre class="example">
+[7, 14, 21, 35, 42, 56, 63, 77, 84, 91]
+
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org71a3ab9" class="outline-4">
+<h4 id="org71a3ab9"><span class="section-number-4">2.1.2</span> AR model fitting</h4>
+<div class="outline-text-4" id="text-2-1-2">
+<p>
+By fitting an AR model to each series with a maximum lag 40, python was able to
+get a k value of 37.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> statsmodels.tsa.ar_model <span style="color: #4f97d7; font-weight: bold;">as</span> ar
+<span style="color: #7590db;">k</span> = consommation.<span style="color: #4f97d7;">apply</span><span style="color: #4f97d7;">(</span><span style="color: #4f97d7; font-weight: bold;">lambda</span> x: ar.AR<span style="color: #bc6ec5;">(</span>x<span style="color: #bc6ec5;">)</span>.select_order<span style="color: #bc6ec5;">(</span>maxlag=<span style="color: #a45bad;">40</span>, ic=<span style="color: #2d9574;">"bic"</span>, trend=<span style="color: #2d9574;">"nc"</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>.<span style="color: #4f97d7;">max</span><span style="color: #4f97d7;">()</span>
 k
 </pre>
 </div>
 
 <pre class="example">
-: 38
+: 37
 
 </pre>
+
+<p>
+However, in R, k is 17.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-R"><span style="color: #a45bad;">library</span><span style="color: #4f97d7;">(</span>FitAR<span style="color: #4f97d7;">)</span>
+
+<span style="color: #bc6ec5; font-weight: bold;">getOrder</span> <span style="color: #a45bad;">&lt;-</span> <span style="color: #4f97d7; font-weight: bold;">function</span><span style="color: #4f97d7;">(</span>ts, order.max=<span style="color: #a45bad;">40</span><span style="color: #4f97d7;">)</span> <span style="color: #4f97d7;">{</span>
+  SelectModel<span style="color: #bc6ec5;">(</span>ts, ARModel = <span style="color: #2d9574;">'AR'</span>, Criterion = <span style="color: #2d9574;">'BIC'</span>, lag.max = <span style="color: #a45bad;">20</span><span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span>
+<span style="color: #4f97d7;">}</span>
+
+k <span style="color: #a45bad;">&lt;-</span> max<span style="color: #4f97d7;">(</span>apply<span style="color: #bc6ec5;">(</span>consommation, <span style="color: #a45bad;">2</span>, getOrder<span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+print<span style="color: #4f97d7;">(</span>k<span style="color: #4f97d7;">)</span>
+</pre>
+</div>
+
+<p>
+[1] 17
+</p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">k</span>=<span style="color: #a45bad;">17</span>
 </pre>
 </div>
-
-
-<div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">print</span><span style="color: #4f97d7;">(</span>inspect.getsource<span style="color: #bc6ec5;">(</span>helpers.k_matrix<span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
-</pre>
+</div>
+</div>
 </div>
 
+
+<div id="outline-container-org675d571" class="outline-3">
+<h3 id="org675d571"><span class="section-number-3">2.2</span> GCC</h3>
+<div class="outline-text-3" id="text-2-2">
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">k_matrix</span><span style="color: #4f97d7;">(</span>ts, k<span style="color: #4f97d7;">)</span>:
+<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> itertools
+<span style="color: #4f97d7; font-weight: bold;">import</span> pickle
+
+<span style="color: #7590db;">k</span> = <span style="color: #a45bad;">21</span>
+
+<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">k_matrix</span><span style="color: #4f97d7;">(</span>ts, k<span style="color: #4f97d7;">)</span>:
     <span style="color: #4f97d7; font-weight: bold;">return</span> np.array<span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">[</span>ts<span style="color: #2d9574;">[</span><span style="color: #67b11d;">(</span>shift<span style="color: #67b11d;">)</span>:ts.shape<span style="color: #67b11d;">[</span><span style="color: #a45bad;">0</span><span style="color: #67b11d;">]</span> - k + shift<span style="color: #2d9574;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> shift <span style="color: #4f97d7; font-weight: bold;">in</span> np.arange<span style="color: #2d9574;">(</span><span style="color: #a45bad;">0</span>, k + <span style="color: #a45bad;">1</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>.T
 
-</pre>
-</div>
-
-
-<div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">print</span><span style="color: #4f97d7;">(</span>inspect.getsource<span style="color: #bc6ec5;">(</span>helpers.get_GCC<span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
-</pre>
-</div>
-
-<div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">get_GCC</span><span style="color: #4f97d7;">(</span>ts1, ts2, k<span style="color: #4f97d7;">)</span>:
+<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">get_GCC</span><span style="color: #4f97d7;">(</span>ts1, ts2, k<span style="color: #4f97d7;">)</span>:
     <span style="color: #7590db;">Xi</span> = k_matrix<span style="color: #4f97d7;">(</span>ts1, k<span style="color: #4f97d7;">)</span>
     <span style="color: #7590db;">Xj</span> = k_matrix<span style="color: #4f97d7;">(</span>ts2, k<span style="color: #4f97d7;">)</span>
     <span style="color: #7590db;">Xij</span> = np.concatenate<span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">(</span>Xi, Xj<span style="color: #bc6ec5;">)</span>, axis=<span style="color: #a45bad;">1</span><span style="color: #4f97d7;">)</span>
-    <span style="color: #7590db;">GCC</span> = <span style="color: #a45bad;">1</span> - np.linalg.det<span style="color: #4f97d7;">(</span>np.corrcoef<span style="color: #bc6ec5;">(</span>Xij, rowvar=<span style="color: #a45bad;">False</span><span style="color: #bc6ec5;">)</span> ** <span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">1</span> / <span style="color: #a45bad;">2</span> * <span style="color: #2d9574;">(</span>k + <span style="color: #a45bad;">1</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span> / <span style="color: #4f97d7;">(</span>
-        np.linalg.det<span style="color: #bc6ec5;">(</span>np.corrcoef<span style="color: #2d9574;">(</span>Xi, rowvar=<span style="color: #a45bad;">False</span><span style="color: #2d9574;">)</span> ** <span style="color: #2d9574;">(</span><span style="color: #a45bad;">1</span> / <span style="color: #a45bad;">2</span> * <span style="color: #67b11d;">(</span>k + <span style="color: #a45bad;">1</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span> \
-        * np.linalg.det<span style="color: #bc6ec5;">(</span>np.corrcoef<span style="color: #2d9574;">(</span>Xj, rowvar=<span style="color: #a45bad;">False</span><span style="color: #2d9574;">)</span> ** <span style="color: #2d9574;">(</span><span style="color: #a45bad;">1</span> / <span style="color: #a45bad;">2</span> * <span style="color: #67b11d;">(</span>k + <span style="color: #a45bad;">1</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+    <span style="color: #7590db;">GCC</span> = <span style="color: #a45bad;">1</span> - np.linalg.det<span style="color: #4f97d7;">(</span>np.corrcoef<span style="color: #bc6ec5;">(</span>Xij, rowvar=<span style="color: #a45bad;">False</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span> ** <span style="color: #4f97d7;">(</span><span style="color: #a45bad;">1</span> / <span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">2</span> * <span style="color: #2d9574;">(</span>k + <span style="color: #a45bad;">1</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span> / <span style="color: #4f97d7;">(</span>
+        np.linalg.det<span style="color: #bc6ec5;">(</span>np.corrcoef<span style="color: #2d9574;">(</span>Xi, rowvar=<span style="color: #a45bad;">False</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span> ** <span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">1</span> / <span style="color: #2d9574;">(</span><span style="color: #a45bad;">2</span> * <span style="color: #67b11d;">(</span>k + <span style="color: #a45bad;">1</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span> \
+        * np.linalg.det<span style="color: #bc6ec5;">(</span>np.corrcoef<span style="color: #2d9574;">(</span>Xj, rowvar=<span style="color: #a45bad;">False</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span> ** <span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">1</span> / <span style="color: #2d9574;">(</span><span style="color: #a45bad;">2</span> * <span style="color: #67b11d;">(</span>k + <span style="color: #a45bad;">1</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span> <span style="color: #4f97d7;">)</span>
     <span style="color: #4f97d7; font-weight: bold;">return</span> GCC
 
+<span style="color: #7590db;">DM_GCC</span> = np.zeros<span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">(</span>consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+<span style="color: #4f97d7; font-weight: bold;">for</span> i, j <span style="color: #4f97d7; font-weight: bold;">in</span> itertools.combinations<span style="color: #4f97d7;">(</span><span style="color: #4f97d7;">range</span><span style="color: #bc6ec5;">(</span>consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span>, <span style="color: #a45bad;">2</span><span style="color: #4f97d7;">)</span>:
+    <span style="color: #7590db;">DM_GCC</span><span style="color: #4f97d7;">[</span>i, j<span style="color: #4f97d7;">]</span> = <span style="color: #7590db;">DM_GCC</span><span style="color: #4f97d7;">[</span>j, i<span style="color: #4f97d7;">]</span> = <span style="color: #a45bad;">1</span> - get_GCC<span style="color: #4f97d7;">(</span>consommation.iloc<span style="color: #bc6ec5;">[</span>:, i<span style="color: #bc6ec5;">]</span>, consommation.iloc<span style="color: #bc6ec5;">[</span>:, j<span style="color: #bc6ec5;">]</span>, k<span style="color: #4f97d7;">)</span>
+<span style="color: #7590db;">DM_GCC</span> = pd.DataFrame<span style="color: #4f97d7;">(</span>DM_GCC, index=consommation.columns, columns=consommation.columns<span style="color: #4f97d7;">)</span>
 </pre>
 </div>
 
-<p>
-Then trying a few different ways of calculation the correlation matrix, I am
-struggling to get a correct value for GCC:
-</p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">DM_GCC</span> = np.zeros<span style="color: #4f97d7;">(</span><span style="color: #bc6ec5;">(</span>consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
-<span style="color: #4f97d7; font-weight: bold;">for</span> i, j <span style="color: #4f97d7; font-weight: bold;">in</span> itertools.combinations<span style="color: #4f97d7;">(</span><span style="color: #4f97d7;">range</span><span style="color: #bc6ec5;">(</span>consommation.shape<span style="color: #2d9574;">[</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span>, <span style="color: #a45bad;">2</span><span style="color: #4f97d7;">)</span>:
-    <span style="color: #7590db;">DM_GCC</span><span style="color: #4f97d7;">[</span>i, j<span style="color: #4f97d7;">]</span> = <span style="color: #7590db;">DM_GCC</span><span style="color: #4f97d7;">[</span>j, i<span style="color: #4f97d7;">]</span> = <span style="color: #a45bad;">1</span> - helpers.get_GCC<span style="color: #4f97d7;">(</span>consommation.iloc<span style="color: #bc6ec5;">[</span>:, i<span style="color: #bc6ec5;">]</span>, consommation.iloc<span style="color: #bc6ec5;">[</span>:, j<span style="color: #bc6ec5;">]</span>, k<span style="color: #4f97d7;">)</span>
-<span style="color: #7590db;">DM_GCC</span> = pd.DataFrame<span style="color: #4f97d7;">(</span>DM_GCC, index=consommation.columns, columns=consommation.columns<span style="color: #4f97d7;">)</span>
+<pre class="src src-R"><span style="color: #bc6ec5; font-weight: bold;">kMatrix</span> <span style="color: #a45bad;">&lt;-</span> <span style="color: #4f97d7; font-weight: bold;">function</span><span style="color: #4f97d7;">(</span>ts, k<span style="color: #4f97d7;">)</span> <span style="color: #4f97d7;">{</span>
+  m <span style="color: #a45bad;">&lt;-</span> ts<span style="color: #bc6ec5;">[</span><span style="color: #a45bad;">1</span> : <span style="color: #2d9574;">(</span>length<span style="color: #67b11d;">(</span>ts<span style="color: #67b11d;">)</span> - k<span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">]</span>
+  <span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #bc6ec5;">(</span>i <span style="color: #4f97d7; font-weight: bold;">in</span> seq<span style="color: #2d9574;">(</span>k<span style="color: #2d9574;">)[</span><span style="color: #a45bad;">2</span>:k<span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span> <span style="color: #bc6ec5;">{</span>
+    m <span style="color: #a45bad;">&lt;-</span> cbind<span style="color: #2d9574;">(</span>m, ts<span style="color: #67b11d;">[</span>i : <span style="color: #b1951d;">(</span>length<span style="color: #4f97d7;">(</span>ts<span style="color: #4f97d7;">)</span> - k + i - <span style="color: #a45bad;">1</span><span style="color: #b1951d;">)</span><span style="color: #67b11d;">]</span><span style="color: #2d9574;">)</span>
+  <span style="color: #bc6ec5;">}</span>
+  m
+<span style="color: #4f97d7;">}</span>
 
-pickle.dump<span style="color: #4f97d7;">(</span>DM_GCC, <span style="color: #4f97d7;">open</span><span style="color: #bc6ec5;">(</span>join<span style="color: #2d9574;">(</span>data_path, <span style="color: #2d9574;">"DM_GCC_17.p"</span><span style="color: #2d9574;">)</span>, <span style="color: #2d9574;">"wb"</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span>
+<span style="color: #bc6ec5; font-weight: bold;">GCC</span> <span style="color: #a45bad;">&lt;-</span> <span style="color: #4f97d7; font-weight: bold;">function</span><span style="color: #4f97d7;">(</span>ts1, ts2, k<span style="color: #4f97d7;">)</span> <span style="color: #4f97d7;">{</span>
+  Xi <span style="color: #a45bad;">&lt;-</span>  kMatrix<span style="color: #bc6ec5;">(</span>ts1, k<span style="color: #bc6ec5;">)</span>
+  Xj <span style="color: #a45bad;">&lt;-</span>  kMatrix<span style="color: #bc6ec5;">(</span>ts2, k<span style="color: #bc6ec5;">)</span>
+
+  Xij <span style="color: #a45bad;">&lt;-</span> cbind<span style="color: #bc6ec5;">(</span>Xi, Xj<span style="color: #bc6ec5;">)</span>
+
+  <span style="color: #a45bad;">1</span> - det<span style="color: #bc6ec5;">(</span>cor<span style="color: #2d9574;">(</span>Xij<span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span>^<span style="color: #bc6ec5;">(</span><span style="color: #a45bad;">1</span>/<span style="color: #2d9574;">(</span><span style="color: #a45bad;">2</span>*<span style="color: #67b11d;">(</span>k+<span style="color: #a45bad;">1</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span> /
+    <span style="color: #bc6ec5;">(</span>det<span style="color: #2d9574;">(</span>cor<span style="color: #67b11d;">(</span>Xi<span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span>^<span style="color: #2d9574;">(</span><span style="color: #a45bad;">1</span>/<span style="color: #67b11d;">(</span><span style="color: #a45bad;">2</span>*<span style="color: #b1951d;">(</span>k+<span style="color: #a45bad;">1</span><span style="color: #b1951d;">)</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span> * det<span style="color: #2d9574;">(</span>cor<span style="color: #67b11d;">(</span>Xj<span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span>^<span style="color: #2d9574;">(</span><span style="color: #a45bad;">1</span>/<span style="color: #67b11d;">(</span><span style="color: #a45bad;">2</span>*<span style="color: #b1951d;">(</span>k+<span style="color: #a45bad;">1</span><span style="color: #b1951d;">)</span><span style="color: #67b11d;">)</span><span style="color: #2d9574;">)</span><span style="color: #bc6ec5;">)</span>
+<span style="color: #4f97d7;">}</span>
+
+combinations <span style="color: #a45bad;">&lt;-</span> combn<span style="color: #4f97d7;">(</span>dim<span style="color: #bc6ec5;">(</span>consommation<span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">]</span>, <span style="color: #a45bad;">2</span><span style="color: #4f97d7;">)</span>
+DM_GCC <span style="color: #a45bad;">&lt;-</span> matrix<span style="color: #4f97d7;">(</span><span style="color: #a45bad;">0</span>, dim<span style="color: #bc6ec5;">(</span>combinations<span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">]</span>, dim<span style="color: #bc6ec5;">(</span>combinations<span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">2</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
+<span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #4f97d7;">(</span>d <span style="color: #4f97d7; font-weight: bold;">in</span> seq<span style="color: #bc6ec5;">(</span>dim<span style="color: #2d9574;">(</span>combinations<span style="color: #2d9574;">)[</span><span style="color: #a45bad;">2</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span><span style="color: #4f97d7;">)</span> <span style="color: #4f97d7;">{</span>
+  distance <span style="color: #a45bad;">&lt;-</span> GCC<span style="color: #bc6ec5;">(</span>consommation<span style="color: #2d9574;">[</span>, combinations<span style="color: #67b11d;">[</span>,d<span style="color: #67b11d;">][</span><span style="color: #a45bad;">1</span><span style="color: #67b11d;">]</span><span style="color: #2d9574;">]</span>,
+                  consommation<span style="color: #2d9574;">[</span>, combinations<span style="color: #67b11d;">[</span>,d<span style="color: #67b11d;">][</span><span style="color: #a45bad;">2</span><span style="color: #67b11d;">]</span><span style="color: #2d9574;">]</span>, k<span style="color: #bc6ec5;">)</span>
+  DM_GCC<span style="color: #bc6ec5;">[</span>combinations<span style="color: #2d9574;">[</span>,d<span style="color: #2d9574;">][</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span>, combinations<span style="color: #2d9574;">[</span>,d<span style="color: #2d9574;">][</span><span style="color: #a45bad;">2</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">]</span> <span style="color: #a45bad;">&lt;-</span> distance
+  DM_GCC<span style="color: #bc6ec5;">[</span>combinations<span style="color: #2d9574;">[</span>,d<span style="color: #2d9574;">][</span><span style="color: #a45bad;">2</span><span style="color: #2d9574;">]</span>, combinations<span style="color: #2d9574;">[</span>,d<span style="color: #2d9574;">][</span><span style="color: #a45bad;">1</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">]</span> <span style="color: #a45bad;">&lt;-</span> distance
+<span style="color: #4f97d7;">}</span>
 </pre>
 </div>
 </div>
 </div>
-
-<div id="outline-container-orga50a1a5" class="outline-2">
-<h2 id="orga50a1a5"><span class="section-number-2">3</span> Clustering</h2>
-<div class="outline-text-2" id="text-3">
 </div>
-<div id="outline-container-orgad6ddd3" class="outline-3">
-<h3 id="orgad6ddd3"><span class="section-number-3">3.1</span> Determination of the number of clusters</h3>
+
+<div id="outline-container-org75a960f" class="outline-2">
+<h2 id="org75a960f"><span class="section-number-2">3</span> Clustering</h2>
+<div class="outline-text-2" id="text-3">
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> inspect
+
+<span style="color: #4f97d7; font-weight: bold;">import</span> numpy <span style="color: #4f97d7; font-weight: bold;">as</span> np
+<span style="color: #4f97d7; font-weight: bold;">from</span> statsmodels.tsa.stattools <span style="color: #4f97d7; font-weight: bold;">import</span> pacf    
+<span style="color: #4f97d7; font-weight: bold;">import</span> statsmodels.tsa.api <span style="color: #4f97d7; font-weight: bold;">as</span> smt
+
+<span style="color: #4f97d7; font-weight: bold;">import</span> src.helpers <span style="color: #4f97d7; font-weight: bold;">as</span> helpers
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org974e48d" class="outline-3">
+<h3 id="org974e48d"><span class="section-number-3">3.1</span> Determination of the number of clusters</h3>
 <div class="outline-text-3" id="text-3-1">
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">linkage</span> = hcl.linkage<span style="color: #4f97d7;">(</span>squareform<span style="color: #bc6ec5;">(</span>DM_GCC<span style="color: #bc6ec5;">)</span>, method=<span style="color: #2d9574;">"average"</span><span style="color: #4f97d7;">)</span>
+<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> scipy.cluster.hierarchy <span style="color: #4f97d7; font-weight: bold;">as</span> hcl
+<span style="color: #4f97d7; font-weight: bold;">from</span> scipy.spatial.distance <span style="color: #4f97d7; font-weight: bold;">import</span> squareform
+
+<span style="color: #7590db;">linkage</span> = hcl.linkage<span style="color: #4f97d7;">(</span>squareform<span style="color: #bc6ec5;">(</span>DM_GCC<span style="color: #bc6ec5;">)</span>, method=<span style="color: #2d9574;">"average"</span><span style="color: #4f97d7;">)</span>
 </pre>
 </div>
 
@@ -1058,11 +1241,16 @@ Text(0,0.5,'Between clusters distance')
 <span style="color: #4f97d7;">[</span>n_clust1, n_clust2<span style="color: #4f97d7;">]</span>
 </pre>
 </div>
+
+<pre class="example">
+[2, 4]
+
+</pre>
 </div>
 </div>
 
-<div id="outline-container-org4f1cdc9" class="outline-3">
-<h3 id="org4f1cdc9"><span class="section-number-3">3.2</span> Clustering methods comparison</h3>
+<div id="outline-container-org7eec02e" class="outline-3">
+<h3 id="org7eec02e"><span class="section-number-3">3.2</span> Clustering methods comparison</h3>
 <div class="outline-text-3" id="text-3-2">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> sklearn.manifold <span style="color: #4f97d7; font-weight: bold;">import</span> TSNE
@@ -1236,16 +1424,6 @@ Text(0,0.5,'y-tsne')
 </pre>
 </div>
 
-<pre class="example">
-Text(0,0.5,'y-tsne')
-
-</pre>
-
-<div class="figure">
-<p><img src="./img/n_clust1_dbscan.png" alt="n_clust1_dbscan.png" />
-</p>
-</div>
-
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> sklearn.cluster <span style="color: #4f97d7; font-weight: bold;">import</span> DBSCAN
 
@@ -1260,16 +1438,6 @@ Text(0,0.5,'y-tsne')
       ax.set_ylabel<span style="color: #4f97d7;">(</span><span style="color: #2d9574;">"y-tsne"</span><span style="color: #4f97d7;">)</span>
       <span style="color: #4f97d7; font-weight: bold;">break</span>
 </pre>
-</div>
-
-<pre class="example">
-Text(0,0.5,'y-tsne')
-
-</pre>
-
-<div class="figure">
-<p><img src="./img/n_clust2_dbscan.png" alt="n_clust2_dbscan.png" />
-</p>
 </div>
 
 <div class="org-src-container">
@@ -1299,14 +1467,18 @@ Text(0,0.5,'y-tsne')
 </div>
 
 
-<div id="outline-container-org84b489d" class="outline-2">
-<h2 id="org84b489d"><span class="section-number-2">4</span> Mapping the clusters</h2>
+<div id="outline-container-org8007cf9" class="outline-2">
+<h2 id="org8007cf9"><span class="section-number-2">4</span> Mapping the clusters</h2>
 <div class="outline-text-2" id="text-4">
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">n_clusters</span> = n_clust2
+<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> numpy <span style="color: #4f97d7; font-weight: bold;">as</span> np
+
+<span style="color: #7590db;">n_clusters</span> = <span style="color: #a45bad;">4</span>
 <span style="color: #7590db;">clusters</span> = hcl.fcluster<span style="color: #4f97d7;">(</span>linkage, t=n_clusters, criterion=<span style="color: #2d9574;">"maxclust"</span><span style="color: #4f97d7;">)</span>
-<span style="color: #7590db;">consommation_clusters</span> = pd.DataFrame<span style="color: #4f97d7;">(</span>np.transpose<span style="color: #bc6ec5;">(</span><span style="color: #2d9574;">[</span><span style="color: #67b11d;">[</span>series<span style="color: #b1951d;">[</span><span style="color: #a45bad;">0</span><span style="color: #b1951d;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> series <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.columns.values<span style="color: #67b11d;">]</span>,
-                                                  <span style="color: #67b11d;">[</span>series<span style="color: #b1951d;">[</span><span style="color: #a45bad;">1</span><span style="color: #b1951d;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> series <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.columns.values<span style="color: #67b11d;">]</span>,
+<span style="color: #7590db;">regions</span> = <span style="color: #4f97d7;">[</span>string.split<span style="color: #bc6ec5;">(</span><span style="color: #2d9574;">'_'</span><span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> string <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.columns<span style="color: #4f97d7;">]</span>
+<span style="color: #7590db;">times</span> = <span style="color: #4f97d7;">[</span>string.split<span style="color: #bc6ec5;">(</span><span style="color: #2d9574;">'_'</span><span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">1</span><span style="color: #bc6ec5;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> string <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.columns<span style="color: #4f97d7;">]</span>
+<span style="color: #7590db;">consommation_clusters</span> = pd.DataFrame<span style="color: #4f97d7;">(</span>np.transpose<span style="color: #bc6ec5;">(</span><span style="color: #2d9574;">[</span>regions,
+                                                  times,
                                                   <span style="color: #4f97d7;">list</span><span style="color: #67b11d;">(</span>clusters<span style="color: #67b11d;">)</span><span style="color: #2d9574;">]</span><span style="color: #bc6ec5;">)</span>, columns=<span style="color: #bc6ec5;">[</span><span style="color: #2d9574;">"Region"</span>, <span style="color: #2d9574;">"Time"</span>, <span style="color: #2d9574;">"Cluster"</span><span style="color: #bc6ec5;">]</span><span style="color: #4f97d7;">)</span>
 </pre>
 </div>
@@ -1337,7 +1509,7 @@ region_cluster<span style="color: #4f97d7;">[</span><span style="color: #2d9574;
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span>  pygal
+<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> pygal
 <span style="color: #4f97d7; font-weight: bold;">from</span> itertools <span style="color: #4f97d7; font-weight: bold;">import</span> chain
 
 <span style="color: #7590db;">fr_chart</span> = pygal.maps.fr.Regions<span style="color: #4f97d7;">()</span>
@@ -1360,13 +1532,14 @@ Sorry, your browser does not support SVG.</object>
 </div>
 </div>
 
-<div id="outline-container-org7ce8824" class="outline-2">
-<h2 id="org7ce8824"><span class="section-number-2">5</span> Check within regions clusters</h2>
+
+<div id="outline-container-org60f9736" class="outline-2">
+<h2 id="org60f9736"><span class="section-number-2">5</span> Check within regions clusters</h2>
 </div>
 
 
-<div id="outline-container-org881f6a1" class="outline-2">
-<h2 id="org881f6a1"><span class="section-number-2">6</span> References:</h2>
+<div id="outline-container-org9234ebd" class="outline-2">
+<h2 id="org9234ebd"><span class="section-number-2">6</span> References:</h2>
 <div class="outline-text-2" id="text-6">
 <p>
 Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A panel data approach with high-dimensional predictors and factor structures. To appear at JASA. Available at: <a href="http://dx.doi.org/10.1080/01621459.2016.1195743">http://dx.doi.org/10.1080/01621459.2016.1195743</a>
@@ -1376,7 +1549,7 @@ Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A p
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Pierre Mercatoris</p>
-<p class="date">Created: 2018-01-12 Fri 23:16</p>
+<p class="date">Created: 2018-01-24 Wed 00:53</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
