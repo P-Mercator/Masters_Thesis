@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2018-03-11 Sun 19:49 -->
+<!-- 2018-04-28 Sat 09:48 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Clustering large number of time series.</title>
@@ -267,61 +267,61 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#orge30d67d">1. Preparing the data</a>
+<li><a href="#org752502f">1. Preparing the data</a>
 <ul>
-<li><a href="#org52af9b1">1.1. Reading the data</a>
+<li><a href="#org19f2300">1.1. Reading the data</a>
 <ul>
-<li><a href="#org1415eea">1.1.1. In Python</a></li>
-<li><a href="#org220d5a8">1.1.2. In R (NOT USED ANYMORE!)</a></li>
+<li><a href="#org3091462">1.1.1. In Python</a></li>
+<li><a href="#org8656354">1.1.2. In R (NOT USED ANYMORE!)</a></li>
 </ul>
 </li>
-<li><a href="#orge89a232">1.2. Transform the data</a>
+<li><a href="#org53195f0">1.2. Transform the data</a>
 <ul>
-<li><a href="#orga1d2898">1.2.1. Stationarity</a></li>
-<li><a href="#org1a0496a">1.2.2. Data standardisation</a></li>
+<li><a href="#org6f091e0">1.2.1. Stationarity</a></li>
+<li><a href="#org47975d6">1.2.2. Data standardisation</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#orge097ce9">2. Calculation of GCC</a>
+<li><a href="#orgc960997">2. Calculation of GCC</a>
 <ul>
-<li><a href="#orgf290815">2.1. Selection of k</a>
+<li><a href="#org41ea4a8">2.1. Selection of k</a>
 <ul>
-<li><a href="#org216dea9">2.1.1. PACF</a></li>
-<li><a href="#org87cc9e2">2.1.2. AR model fitting</a></li>
+<li><a href="#org2442577">2.1.1. PACF</a></li>
+<li><a href="#orgd694f2c">2.1.2. AR model fitting</a></li>
 </ul>
 </li>
-<li><a href="#org4e37e4f">2.2. GCC</a></li>
+<li><a href="#org0924448">2.2. GCC</a></li>
 </ul>
 </li>
-<li><a href="#org1cf9966">3. Clustering</a>
+<li><a href="#orgadfba3a">3. Clustering</a>
 <ul>
-<li><a href="#orgedf2dc8">3.1. Determination of the number of clusters</a></li>
-<li><a href="#org847f219">3.2. Clustering methods comparison</a></li>
+<li><a href="#orgb28c4c9">3.1. Determination of the number of clusters</a></li>
+<li><a href="#org64c847d">3.2. Clustering methods comparison</a></li>
 </ul>
 </li>
-<li><a href="#org5844edb">4. Plot Clusters</a>
+<li><a href="#org6a908e3">4. Plot Clusters</a>
 <ul>
-<li><a href="#org33b8958">4.1. Mapping the clusters</a></li>
-<li><a href="#org3bd5ab7">4.2. Check within regions clusters</a></li>
+<li><a href="#org60c14e4">4.1. Mapping the clusters</a></li>
+<li><a href="#orgb3a6fa4">4.2. Check within regions clusters</a></li>
 </ul>
 </li>
-<li><a href="#org2c3d61b">5. References:</a></li>
+<li><a href="#org498176c">5. References:</a></li>
 </ul>
 </div>
 </div>
 
 
-<div id="outline-container-orge30d67d" class="outline-2">
-<h2 id="orge30d67d"><span class="section-number-2">1</span> Preparing the data</h2>
+<div id="outline-container-org752502f" class="outline-2">
+<h2 id="org752502f"><span class="section-number-2">1</span> Preparing the data</h2>
 <div class="outline-text-2" id="text-1">
 </div>
-<div id="outline-container-org52af9b1" class="outline-3">
-<h3 id="org52af9b1"><span class="section-number-3">1.1</span> Reading the data</h3>
+<div id="outline-container-org19f2300" class="outline-3">
+<h3 id="org19f2300"><span class="section-number-3">1.1</span> Reading the data</h3>
 <div class="outline-text-3" id="text-1-1">
 </div>
-<div id="outline-container-org1415eea" class="outline-4">
-<h4 id="org1415eea"><span class="section-number-4">1.1.1</span> In Python</h4>
+<div id="outline-container-org3091462" class="outline-4">
+<h4 id="org3091462"><span class="section-number-4">1.1.1</span> In Python</h4>
 <div class="outline-text-4" id="text-1-1-1">
 <p>
 I have downloaded all the regions' annual data from 2013 to 2015, the
@@ -590,8 +590,8 @@ consommation.to_csv<span style="color: #4f97d7;">(</span>join<span style="color:
 </div>
 </div>
 
-<div id="outline-container-org220d5a8" class="outline-4">
-<h4 id="org220d5a8"><span class="section-number-4">1.1.2</span> In R (NOT USED ANYMORE!)</h4>
+<div id="outline-container-org8656354" class="outline-4">
+<h4 id="org8656354"><span class="section-number-4">1.1.2</span> In R (NOT USED ANYMORE!)</h4>
 <div class="outline-text-4" id="text-1-1-2">
 <div class="org-src-container">
 <pre class="src src-R"><span style="color: #a45bad;">library</span><span style="color: #4f97d7;">(</span>tidyverse<span style="color: #4f97d7;">)</span>
@@ -760,12 +760,12 @@ sum<span style="color: #4f97d7;">(</span>is.na<span style="color: #bc6ec5;">(</s
 </div>
 
 
-<div id="outline-container-orge89a232" class="outline-3">
-<h3 id="orge89a232"><span class="section-number-3">1.2</span> Transform the data</h3>
+<div id="outline-container-org53195f0" class="outline-3">
+<h3 id="org53195f0"><span class="section-number-3">1.2</span> Transform the data</h3>
 <div class="outline-text-3" id="text-1-2">
 </div>
-<div id="outline-container-orga1d2898" class="outline-4">
-<h4 id="orga1d2898"><span class="section-number-4">1.2.1</span> Stationarity</h4>
+<div id="outline-container-org6f091e0" class="outline-4">
+<h4 id="org6f091e0"><span class="section-number-4">1.2.1</span> Stationarity</h4>
 <div class="outline-text-4" id="text-1-2-1">
 <p>
 As all the series are daily values there is a strong weekly seasonality within
@@ -949,8 +949,8 @@ p_values.<span style="color: #4f97d7;">max</span><span style="color: #4f97d7;">(
 </div>
 </div>
 
-<div id="outline-container-org1a0496a" class="outline-4">
-<h4 id="org1a0496a"><span class="section-number-4">1.2.2</span> Data standardisation</h4>
+<div id="outline-container-org47975d6" class="outline-4">
+<h4 id="org47975d6"><span class="section-number-4">1.2.2</span> Data standardisation</h4>
 <div class="outline-text-4" id="text-1-2-2">
 <p>
 In order to standardise the data and get a mean of 0 and standard deviation of
@@ -993,16 +993,16 @@ Std of z score is between 1.00028007282  and  1.00028007282
 </div>
 
 
-<div id="outline-container-orge097ce9" class="outline-2">
-<h2 id="orge097ce9"><span class="section-number-2">2</span> Calculation of GCC</h2>
+<div id="outline-container-orgc960997" class="outline-2">
+<h2 id="orgc960997"><span class="section-number-2">2</span> Calculation of GCC</h2>
 <div class="outline-text-2" id="text-2">
 </div>
-<div id="outline-container-orgf290815" class="outline-3">
-<h3 id="orgf290815"><span class="section-number-3">2.1</span> Selection of k</h3>
+<div id="outline-container-org41ea4a8" class="outline-3">
+<h3 id="org41ea4a8"><span class="section-number-3">2.1</span> Selection of k</h3>
 <div class="outline-text-3" id="text-2-1">
 </div>
-<div id="outline-container-org216dea9" class="outline-4">
-<h4 id="org216dea9"><span class="section-number-4">2.1.1</span> PACF</h4>
+<div id="outline-container-org2442577" class="outline-4">
+<h4 id="org2442577"><span class="section-number-4">2.1.1</span> PACF</h4>
 <div class="outline-text-4" id="text-2-1-1">
 <p>
 At first I decided to check for the order of AR from our times series by
@@ -1077,8 +1077,8 @@ orders
 </div>
 </div>
 
-<div id="outline-container-org87cc9e2" class="outline-4">
-<h4 id="org87cc9e2"><span class="section-number-4">2.1.2</span> AR model fitting</h4>
+<div id="outline-container-orgd694f2c" class="outline-4">
+<h4 id="orgd694f2c"><span class="section-number-4">2.1.2</span> AR model fitting</h4>
 <div class="outline-text-4" id="text-2-1-2">
 <p>
 By fitting an AR model to each series with a maximum lag 40, python was able to
@@ -1126,8 +1126,8 @@ print<span style="color: #4f97d7;">(</span>k<span style="color: #4f97d7;">)</spa
 </div>
 
 
-<div id="outline-container-org4e37e4f" class="outline-3">
-<h3 id="org4e37e4f"><span class="section-number-3">2.2</span> GCC</h3>
+<div id="outline-container-org0924448" class="outline-3">
+<h3 id="org0924448"><span class="section-number-3">2.2</span> GCC</h3>
 <div class="outline-text-3" id="text-2-2">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> numpy <span style="color: #4f97d7; font-weight: bold;">as</span> np
@@ -1289,8 +1289,8 @@ DM_GCC <span style="color: #a45bad;">&lt;-</span> matrix<span style="color: #4f9
 </div>
 </div>
 
-<div id="outline-container-org1cf9966" class="outline-2">
-<h2 id="org1cf9966"><span class="section-number-2">3</span> Clustering</h2>
+<div id="outline-container-orgadfba3a" class="outline-2">
+<h2 id="orgadfba3a"><span class="section-number-2">3</span> Clustering</h2>
 <div class="outline-text-2" id="text-3">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> inspect
@@ -1304,8 +1304,8 @@ DM_GCC <span style="color: #a45bad;">&lt;-</span> matrix<span style="color: #4f9
 </div>
 </div>
 
-<div id="outline-container-orgedf2dc8" class="outline-3">
-<h3 id="orgedf2dc8"><span class="section-number-3">3.1</span> Determination of the number of clusters</h3>
+<div id="outline-container-orgb28c4c9" class="outline-3">
+<h3 id="orgb28c4c9"><span class="section-number-3">3.1</span> Determination of the number of clusters</h3>
 <div class="outline-text-3" id="text-3-1">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> scipy.cluster.hierarchy <span style="color: #4f97d7; font-weight: bold;">as</span> hcl
@@ -1389,8 +1389,8 @@ Text(0,0.5,'Between clusters distance')
 </div>
 </div>
 
-<div id="outline-container-org847f219" class="outline-3">
-<h3 id="org847f219"><span class="section-number-3">3.2</span> Clustering methods comparison</h3>
+<div id="outline-container-org64c847d" class="outline-3">
+<h3 id="org64c847d"><span class="section-number-3">3.2</span> Clustering methods comparison</h3>
 <div class="outline-text-3" id="text-3-2">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">n_clusters</span> = <span style="color: #a45bad;">7</span>
@@ -1472,8 +1472,8 @@ Text(0,0.5,'y-tsne')
 </div>
 
 
-<div id="outline-container-org5844edb" class="outline-2">
-<h2 id="org5844edb"><span class="section-number-2">4</span> Plot Clusters</h2>
+<div id="outline-container-org6a908e3" class="outline-2">
+<h2 id="org6a908e3"><span class="section-number-2">4</span> Plot Clusters</h2>
 <div class="outline-text-2" id="text-4">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">n_clusters</span> = <span style="color: #a45bad;">7</span>
@@ -1484,8 +1484,8 @@ Text(0,0.5,'y-tsne')
 </div>
 </div>
 
-<div id="outline-container-org33b8958" class="outline-3">
-<h3 id="org33b8958"><span class="section-number-3">4.1</span> Mapping the clusters</h3>
+<div id="outline-container-org60c14e4" class="outline-3">
+<h3 id="org60c14e4"><span class="section-number-3">4.1</span> Mapping the clusters</h3>
 <div class="outline-text-3" id="text-4-1">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">regions</span> = <span style="color: #4f97d7;">[</span>string.split<span style="color: #bc6ec5;">(</span><span style="color: #2d9574;">'_'</span><span style="color: #bc6ec5;">)[</span><span style="color: #a45bad;">0</span><span style="color: #bc6ec5;">]</span> <span style="color: #4f97d7; font-weight: bold;">for</span> string <span style="color: #4f97d7; font-weight: bold;">in</span> consommation.columns<span style="color: #4f97d7;">]</span>
@@ -1551,8 +1551,8 @@ fr_chart.render_to_file<span style="color: #4f97d7;">(</span><span style="color:
 
 
 
-<div id="outline-container-org3bd5ab7" class="outline-3">
-<h3 id="org3bd5ab7"><span class="section-number-3">4.2</span> Check within regions clusters</h3>
+<div id="outline-container-orgb3a6fa4" class="outline-3">
+<h3 id="orgb3a6fa4"><span class="section-number-3">4.2</span> Check within regions clusters</h3>
 <div class="outline-text-3" id="text-4-2">
 <div class="org-src-container">
 <pre class="src src-ipython"><span style="color: #7590db;">n_clusters</span> = <span style="color: #a45bad;">7</span>
@@ -1763,8 +1763,8 @@ plt.show<span style="color: #4f97d7;">()</span>
 </div>
 
 
-<div id="outline-container-org2c3d61b" class="outline-2">
-<h2 id="org2c3d61b"><span class="section-number-2">5</span> References:</h2>
+<div id="outline-container-org498176c" class="outline-2">
+<h2 id="org498176c"><span class="section-number-2">5</span> References:</h2>
 <div class="outline-text-2" id="text-5">
 <p>
 Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A panel data approach with high-dimensional predictors and factor structures. To appear at JASA. Available at: <a href="http://dx.doi.org/10.1080/01621459.2016.1195743">http://dx.doi.org/10.1080/01621459.2016.1195743</a>
@@ -1774,7 +1774,7 @@ Ando, T. and Bai, J. (2016) Clustering huge number of financial time series: A p
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Pierre Mercatoris</p>
-<p class="date">Created: 2018-03-11 Sun 19:49</p>
+<p class="date">Created: 2018-04-28 Sat 09:48</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

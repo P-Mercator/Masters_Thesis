@@ -42,7 +42,7 @@
 
   data_path = "data"
 
-  # Combine all the .xls of each region
+  # Combine all the .xls interruptof each region
   data = pd.concat([
       pd.read_table(
           file, encoding="cp1252", delimiter="\t", engine="python",
@@ -68,7 +68,7 @@
   
   #+RESULTS:
   :RESULTS:
-  # Out[26]:
+  # Out[1]:
   #+BEGIN_EXAMPLE
     Périmètre               Nature        Date Heures  Consommation Thermique  \
     0  Normandie  Données définitives  2013-01-01  00:00           NaN        ND
@@ -110,7 +110,7 @@ daylight saving time change and avoid removing data or introducing NAs.
 
 #+RESULTS:
 :RESULTS:
-# Out[27]:
+# Out[7]:
 #+BEGIN_EXAMPLE
   Périmètre                  Auvergne-Rhône-Alpes  Bourgogne-Franche-Comté  \
   Datetime
@@ -179,6 +179,21 @@ gaps are expected as this data was not yet consolidated.
   # Out[28]:
   [[file:./img/plotSeries.png]]
   :END:
+
+  #+BEGIN_SRC ipython :session :ipyfile ./img/plotAllRegions.png :exports both :results raw drawer
+    consommation.loc[:,consommation.mean().sort_values(ascending=False).index].plot(
+        alpha=0.7, lw=.1, figsize=(16,9), colormap='Spectral')
+    leg = plt.legend(loc='upper right')
+    for lh in leg.legendHandles:
+        lh.set_linewidth(2)
+        lh.set_alpha(1)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[184]:
+  [[file:./img/plotAllRegions.png]]
+  :END:
   
 In order to make sure we are using
 clean data, I have decided to use the records from the 2nd of January 2013 (1st
@@ -207,7 +222,7 @@ series (48 for each of the 12 regions) over 1455 days.
 
 #+RESULTS:
 :RESULTS:
-# Out[29]:
+# Out[95]:
 #+BEGIN_EXAMPLE
   Périmètre  Auvergne-Rhône-Alpes                                               \
   time                   00:00:00 00:30:00 01:00:00 01:30:00 02:00:00 02:30:00
@@ -249,6 +264,22 @@ series (48 for each of the 12 regions) over 1455 days.
 #+END_EXAMPLE
 :END:
 
+  #+BEGIN_SRC ipython :session :ipyfile ./img/plotAllTime.png :exports both :results raw drawer
+    mean_by_time  = consommation.groupby(level=1,  axis=1).mean().reset_index()
+    mean_by_time.loc[:,mean_by_time.mean().sort_values(ascending=False).index].plot(
+        alpha=0.9, lw=.5, figsize=(20,14), colormap='Spectral')
+    leg = plt.legend(loc='upper right')
+    for lh in leg.legendHandles:
+        lh.set_linewidth(2)
+        lh.set_alpha(1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[190]:
+[[file:./img/plotAllTime.png]]
+:END:
+
 With minimal data manipulation, I was able to format the data into 48 daily
 series for each of the regions and get rid of all the 'missing' values.
 
@@ -276,118 +307,7 @@ This data is now saved into a csv to read from R.
 
 #+RESULTS:
 :RESULTS:
-# Out[31]:
-:END:
-
-*** In R (NOT USED ANYMORE!)
-#+BEGIN_SRC R :session :exports code :results silent
-  library(tidyverse)
-  library(lubridate)
-#+END_SRC
-
-#+BEGIN_SRC R :session :exports both :results output drawer
-  data <- read.csv("data/all_raw.csv", row.names=NULL, encoding="cp1252")
-  data$Date <- parse_date(data$Date)
-  data$Heures <- parse_time(data$Heures)
-  data$Consommation <- data$Consommation %>%
-    as.character() %>%
-    parse_double(na = c("", "NA", "-"))
-
-  data <- data %>%
-    select(c("Périmètre", "Consommation", "Date", "Heures"))%>%
-    filter(Périmètre != "France")
-
-  goodRegions <- data %>%
-    spread(key=Périmètre, value = Consommation) %>%
-    is.na() %>%
-    colMeans() < 0.5
-
-  goodRegions<- names(which(goodRegions))
-  data <- data[data$Périmètre %in% goodRegions, ]
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC R :session :exports both :results output graphics :file ./img/r_xts_outliers.png
-  library(xts)
-
-  data.byPerimetre<- data %>%
-    spread(key=Périmètre, value=Consommation) %>%
-    filter(Date > ymd("2013-01-01"))
-
-  dates <- as.POSIXct(paste(data.byPerimetre$Date, data.byPerimetre$Heures), format="%Y-%m-%d %H:%M:%S", tz="UTC")
-  regions.xts <- xts(data.matrix(data.byPerimetre[, c(-1,-2)]),order.by=dates)
-
-  ep <- endpoints(regions.xts, "minutes", k=30)
-  halfHour.xts <- period.apply(na.locf(regions.xts), INDEX = ep, FUN = mean)
-
-  plot.xts(halfHour.xts)
-#+END_SRC
-
-#+RESULTS:
-[[file:./img/r_xts_outliers.png]]
- 
-#+BEGIN_SRC R :session :exports both :results output graphics :file ./img/r_xts.png
-  ## From 1st of september 2017, we get 15 minutes measurements
-  data.byPerimetre<- data %>%
-    spread(key=Périmètre, value=Consommation) %>%
-    filter(Date > ymd("2013-01-01")) %>%
-      filter(Date < ymd("2017-09-01"))
-
-  dates <- as.POSIXct(paste(data.byPerimetre$Date, data.byPerimetre$Heures), format="%Y-%m-%d %H:%M:%S", tz="UTC")
-  regions.xts <- xts(data.matrix(data.byPerimetre[, c(-1,-2)]),order.by=dates)
-
-  ep <- endpoints(regions.xts, "minutes", k=30)
-  halfHour.xts <- period.apply(na.locf(regions.xts), INDEX = ep, FUN = mean)
-
-  plot.xts(halfHour.xts)
-#+END_SRC
-
-#+RESULTS:
-[[file:./img/r_xts.png]]
-
-
-#+BEGIN_SRC R :session :exports both :results table :colnames yes :rownames yes
-  tHourly <- function(x) {
-    ## print(index(x[1]))
-    # initialize result matrix for all 48 half-hour
-    dnames <- list(paste0(date(index(x))[1]),
-                   paste0("H", seq(0,23.5,0.5), rep(colnames(x), each = 48)))
-    res <- matrix(NA, 1, dim(x)[2] * 48, dimnames = dnames)
-    # update result object and return
-    res[,] <- unlist(split(t(x), seq(ncol(x))))
-    res
-  }
-
-  # split on days, apply tHourly to each day, rbind results
-  p_mat <- split(halfHour.xts, f="days", drop=FALSE, k=1)
-  p_list <- lapply(p_mat, tHourly)
-  p_hmat <- do.call(rbind, p_list)
-
-  head(p_hmat[,1:2])
-#+END_SRC
-
-#+RESULTS:
-|            | H0Auvergne-Rhône-Alpes | H0.5Auvergne-Rhône-Alpes |
-|------------+------------------------+--------------------------|
-| 2013-01-02 |                   7847 |                     7674 |
-| 2013-01-03 |                   9028 |                     8839 |
-| 2013-01-04 |                   8982 |                     8754 |
-| 2013-01-05 |                   8625 |                     8465 |
-| 2013-01-06 |                   8314 |                     8097 |
-| 2013-01-07 |                   8312 |                     8214 |
-
-#+BEGIN_SRC R :session :exports both :results output drawer
-dim(p_hmat)
-sum(is.na(p_hmat))
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-[1] 1703  576
-[1] 0
+# Out[192]:
 :END:
 
 
@@ -419,48 +339,47 @@ In order to transform the data to stationary series, we need to study the
  autocorrelation function. The black lines show the autocorrelation function until lag 100
  of each individual series, while the red one is the function of the mean of the
  series. That first autocorrelation clearly shows the weekly seasonality.
- 
- #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf0_R.png
-   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
-   for (i in 2:dim(consommation)[2]){
-     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf_diff7_R.png :width 900 :height 600
+   par(mfrow=c(3,4))
+   par(mar=c(5.1,4.1,4.1,2.1))
+   for (i in 1:12){
+     acf(diff(consommation[,(i-1)*48+1],7), lag=100, main=colnames(consommation)[(i-1)*48+1])
    }
-   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
  #+END_SRC
 
  #+RESULTS:
  [[file:./img/acf0_R.png]]
+
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf_diff71_R.png :width 900 :height 600
+   par(mfrow=c(3,4))
+   par(mar=c(5.1,4.1,4.1,2.1))
+   for (i in 1:12){
+     acf(diff(diff(consommation[,(i-1)*48+1],7),1), lag=100, main=colnames(consommation)[(i-1)*48+1])
+   }
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:./img/acf_diff71_R.png]]
  
+
+ #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf_test_R.png :width 900 :height 600
+   par(mfrow=c(3,4))
+   par(mar=c(5.1,4.1,4.1,2.1))
+   for (i in 1:12){
+     acf(consommation[,(i-1)*48+1], lag=100, main=colnames(consommation)[(i-1)*48+1])
+   }
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:./img/acf_test_R.png]]
+
 To try and remove it, I have taken the weekly difference (difference between all
 the values separated by 7 days). Now there is still some correlation, but it is better.
-
- #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf1_R.png
-   consommation = diff(as.matrix(consommation), 7)
-   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
-   for (i in 2:dim(consommation)[2]){
-     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
-   }
-   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
- #+END_SRC
- 
- #+RESULTS:
- [[file:./img/acf1_R.png]]
 
 So as to get as close stationarity as possible without loosing too much data, I
 have taken another difference, but this time only 1 day. Now, most of the values
 stay within the confidence interval.
 
- #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/acf17_R.png
-   consommation = diff(consommation, 1)
-   plot(acf(consommation[,1], lag=100), type="l", max.mfrow=1, ylim=c(-0.4, 1))
-   for (i in 2:dim(consommation)[2]){
-     lines(acf(consommation[,i], lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=0.1, alpha=0.8)
-   }
-   lines(acf(rowMeans(consommation), lag=100, plot=FALSE)$acf[-1, 1,1], lty=1, lwd=2, col='red')
- #+END_SRC
-
- #+RESULTS:
- [[file:./img/acf17_R.png]]
 
  I have then used the Dickey-Fuller test on all the series and confirmed that
  all the series are now significantly stationary (all p-values lower than 0.01).
@@ -468,6 +387,7 @@ stay within the confidence interval.
  #+BEGIN_SRC R :session :exports both :results output drawer
    library(fpp)
 
+   consommation <- diff(diff(as.matrix(consommation),7),1)
    max_p = 0
    for (i in 2:dim(consommation)[2]){
      p = adf.test(consommation[,i], alternative='stationary')$p.value
@@ -480,6 +400,18 @@ stay within the confidence interval.
 
  #+RESULTS:
  :RESULTS:
+ Loading required package: forecast
+ Loading required package: fma
+ Loading required package: expsmooth
+ Loading required package: lmtest
+ Loading required package: tseries
+
+     ‘tseries’ version: 0.10-44
+
+     ‘tseries’ is a package for time series analysis and computational
+     finance.
+
+     See ‘library(help="tseries")’ for details.
  There were 50 or more warnings (use warnings() to see the first 50)
  [1] "All values below 0.01"
  :END:
@@ -492,30 +424,43 @@ same autocorrelation function.
    from statsmodels.tsa.stattools import acf
    import pandas as pd
    import matplotlib.pyplot as plt
-  from os.path import join
+   from statsmodels.graphics.tsaplots import plot_acf 
+   from os.path import join
    %matplotlib inline
 
-  data_path = "data"
+   data_path = "data"
 
    consommation = pd.read_csv(join(data_path, 'consommation.csv'), index_col=0)
-   consommation = consommation.diff(7).diff(1).iloc[8:,:]
+   consommation_diff = consommation.diff(7).iloc[7:,:]
 
-   plt.figure()
-   ax = plt.gca()
-   for columns in consommation:
-       plt.plot(acf(consommation.loc[:,columns], nlags=100), alpha=0.05, color="black")
-   plt.plot(acf(consommation.mean(axis=1), nlags=100), color='red')
-   ax.set_xlabel("Lag")
-   ax.set_ylabel("Autocorrelation")
+   fig, axes = plt.subplots(3,4,sharex=True,sharey=True)
+   fig.set_size_inches(16,12)
+   for i,ax in zip(range(12),axes.reshape(-1)):
+       plot_acf(consommation_diff.iloc[:,i*48+24], lags=50, ax=ax)
+       ax.set_title(consommation.columns[i*48+24])
  #+END_SRC
 
  #+RESULTS:
  :RESULTS:
- # Out[433]:
- : Text(0,0.5,'Autocorrelation')
- [[file:./obipy-resources/17950Jd1.png]]
+ # Out[1]:
+ [[file:./obipy-resources/117262qt.png]]
  :END:
 
+ #+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+   consommation_diff = consommation.diff(7).diff(1).iloc[8:,:]
+
+   fig, axes = plt.subplots(3,4,sharex=True,sharey=True)
+   fig.set_size_inches(16,12)
+   for i,ax in zip(range(12),axes.reshape(-1)):
+       plot_acf(consommation_diff.iloc[:,i*48+24], lags=50, ax=ax)
+       ax.set_title(consommation.columns[i*48+24])
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[131]:
+ [[file:./obipy-resources/23655_Ck.png]]
+ :END:
  
 In Python is was possible to get the exact p-values and show that the largest
 p-value is actually of order 10^{-22}.
@@ -531,14 +476,15 @@ p-value is actually of order 10^{-22}.
          dfoutput['Critical Value (%s)' % key] = value
      return dfoutput
 
+ consommation = consommation_diff
  p_values = consommation.apply(lambda x: test_stationarity(x)["p-value"])
  p_values.max()
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[434]:
-   : 1.6017214722253976e-22
+   # Out[2]:
+   : 1.3894735039903391e-08
    :END:
   
 *** Data standardisation
@@ -557,7 +503,7 @@ p-value is actually of order 10^{-22}.
 
 #+RESULTS:
 :RESULTS:
-[1] -1.414671e-17
+[1] -2.064756e-17
 [1] 1
 :END:
  
@@ -571,8 +517,8 @@ p-value is actually of order 10^{-22}.
 
 #+RESULTS:
 :RESULTS:
-Mean of z score is between -3.45623741149e-17  and  2.94650455584e-17
-Std of z score is between 1.00028007282  and  1.00028007282
+Mean of z score is between -2.67646378852e-16  and  3.86683162018e-16
+Std of z score is between 1.00027991603  and  1.00027991603
 :END:
 
    
@@ -581,249 +527,125 @@ Std of z score is between 1.00028007282  and  1.00028007282
 ** Selection of k
 *** PACF
 
-   At first I decided to check for the order of AR from our times series by
-   looking at the 'partial autocorrelation function', which is the autocorrelation
-   of the series but controlling for the correlations between values at shorter
-   lags.
+    At first I decided to check for the order of AR from our times series by
+    looking at the 'partial autocorrelation function', which is the autocorrelation
+    of the series but controlling for the correlations between values at shorter
+    lags.
 
- #+BEGIN_SRC ipython :session :ipyfile ./img/pacf_python.png  :exports both :results raw drawer
-   from statsmodels.tsa.stattools import pacf    
-   import numpy as np
+    #+BEGIN_SRC ipython :session :ipyfile ./img/pacf_python.png  :exports both :results raw drawer
+    from statsmodels.tsa.stattools import pacf    
+    import numpy as np
+    
+    plt.figure()
+    ax = plt.gca()
+    all_pacf = np.array([pacf(consommation.loc[:,columns], nlags=100) for columns in consommation])
+    mean_pacf = pacf(consommation.mean(axis=1).values, nlags=100)
+    plt.axhline(1.96/np.sqrt(len(mean_pacf)), color='red')
+    plt.axhline(-1.96/np.sqrt(len(mean_pacf)), color='red')
+    for p in all_pacf:
+    plt.plot(p, alpha=0.05, color="black")
+    plt.plot(pacf(consommation.mean(axis=1), nlags=100), color='red')
+    ax.set_xlabel("Lag")
+    ax.set_ylabel("Partial Autocorrelation")
+    #+END_SRC
 
-   plt.figure()
-   ax = plt.gca()
-   all_pacf = np.array([pacf(consommation.loc[:,columns], nlags=100) for columns in consommation])
-   mean_pacf = pacf(consommation.mean(axis=1).values, nlags=100)
-   plt.axhline(1.96/np.sqrt(len(mean_pacf)), color='red')
-   plt.axhline(-1.96/np.sqrt(len(mean_pacf)), color='red')
-   for p in all_pacf:
-       plt.plot(p, alpha=0.05, color="black")
-   plt.plot(pacf(consommation.mean(axis=1), nlags=100), color='red')
-   ax.set_xlabel("Lag")
-   ax.set_ylabel("Partial Autocorrelation")
- #+END_SRC
+    #+RESULTS:
+    :RESULTS:
+    # Out[134]:
+    : Text(0,0.5,'Partial Autocorrelation')
+    [[file:./img/pacf_python.png]]
+    :END:
 
- #+RESULTS:
- :RESULTS:
- # Out[42]:
- : Text(0,0.5,'Partial Autocorrelation')
- [[file:./img/pacf_python.png]]
- :END:
+    I then looked at those local minimums (for each 10 lag interval) by first getting the minimums of the mean
+    pacf (red line).
 
-I then looked at those local minimums (for each 10 lag interval) by first getting the minimums of the mean
-pacf (red line).
+    #+BEGIN_SRC ipython :session :results raw drawer :exports both
+    mean_pacf = pacf(consommation.mean(axis=1).values, nlags=100)
+    orders = [r[0] + mean_pacf[r[0] : r[1]].argmin()
+    for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
+    orders
+    #+END_SRC
 
-   #+BEGIN_SRC ipython :session :results raw drawer :exports both
-     mean_pacf = pacf(consommation.mean(axis=1).values, nlags=100)
-     orders = [r[0] + mean_pacf[r[0] : r[1]].argmin()
-      for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
-     orders
-   #+END_SRC
+    #+RESULTS:
+    :RESULTS:
+    # Out[135]:
+    : [7, 14, 21, 35, 42, 56, 63, 70, 84, 98]
+    :END:
 
-   #+RESULTS:
-   :RESULTS:
-   # Out[43]:
-   : [7, 14, 21, 35, 42, 56, 63, 70, 84, 98]
-   :END:
+    And then I checked the minimum across all the series, so as to make sure that
+    the order was large enough for all series. The values are the same originally
+    but deviate at larger lag. It seems that 21 is the largest significant order.
 
-And then I checked the minimum across all the series, so as to make sure that
-the order was large enough for all series. The values are the same originally
-but deviate at larger lag. It seems that 21 is the largest significant order.
+    #+BEGIN_SRC ipython :session :results raw drawer :exports both
+    orders = [r[0] + np.where(all_pacf[:, r[0]:r[1]] == all_pacf[:, r[0]:r[1]].min())[1][0]
+    for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
+    orders
+    #+END_SRC
 
-   #+BEGIN_SRC ipython :session :results raw drawer :exports both
-     orders = [r[0] + np.where(all_pacf[:, r[0]:r[1]] == all_pacf[:, r[0]:r[1]].min())[1][0]
-         for r in zip(np.arange(0, 100, 10), np.arange(10, 110, 10))]
-     orders
-   #+END_SRC
-
-   #+RESULTS:
-   :RESULTS:
-   # Out[44]:
-   : [7, 14, 21, 35, 42, 56, 63, 77, 84, 91]
-   :END:
+    #+RESULTS:
+    :RESULTS:
+    # Out[136]:
+    : [7, 14, 21, 35, 42, 56, 63, 77, 84, 91]
+    :END:
 
 *** AR model fitting
+
+**** python
     
-By fitting an AR model to each series with a maximum lag 40, python was able to
-get a k value of 37.
+     By fitting an AR model to each series with a maximum lag 40, python was able to
+     get a k value of 37.
 
-#+BEGIN_SRC ipython :session :exports both :eval no
-import statsmodels.tsa.ar_model as ar
-k = consommation.apply(lambda x: ar.AR(x).select_order(maxlag=40, ic="bic", trend="nc")).max()
-k
-#+END_SRC
+     #+BEGIN_SRC ipython :session :exports both :eval no
+     import statsmodels.tsa.ar_model as ar
+     k = consommation.apply(lambda x: ar.AR(x).select_order(maxlag=20, ic="bic", trend="nc")).max()
+     k
+     #+END_SRC
 
-#+RESULTS:
-: : 37
+     #+RESULTS:
+     : # Out[137]:
+     : : 20
 
-However, in R, k is 17.
+     #+BEGIN_SRC ipython :session :exports both 
+     import statsmodels.api as sm
+     k = consommation.apply(lambda x: sm.tsa.arma_order_select_ic(x, ic='bic', trend='nc', max_ar=40, max_ma=1)['bic_min_order'][0]).max()
+     k
+     #+END_SRC
 
-#+BEGIN_SRC R :session :exports both :results output drawer :eval no
-  library(FitAR)
+**** R
 
-  getOrder <- function(ts, order.max=40) {
-    SelectModel(ts, ARModel = 'AR', Criterion = 'BIC', lag.max = 20)[1,1]
-  }
+     However, in R, k is 17.
 
-  k <- max(apply(consommation, 2, getOrder))
-  print(k)
-#+END_SRC
+     #+BEGIN_SRC R :session :exports both :results output drawer :eval no
+     library(FitAR)
 
-#+RESULTS:
-:RESULTS:
-[1] 17
-:END:
+     getOrder <- function(ts, order.max=40) {
+       SelectModel(ts, ARModel = 'AR', Criterion = 'BIC', lag.max = order.max)[1,1]
+     }
 
-#+BEGIN_SRC ipython :session
-k=17
-#+END_SRC
+     k <- max(apply(consommation, 2, getOrder))
+     #+END_SRC
 
-#+RESULTS:
-: # Out[2]:
+     #+BEGIN_SRC R :session :exports both :results output drawer 
+     print(k)
+     #+END_SRC
+
+     #+RESULTS:
+     :RESULTS:
+     [1] 37
+     :END:
+
 
 
 ** GCC
 
-  #+BEGIN_SRC ipython :session :results output code :exports both 
-    import numpy as np
-    from scipy.spatial.distance import pdist
-    from scipy.spatial.distance import squareform
-    import itertools
-    import pickle
+*** R
 
-
-    def k_matrix(ts, k):
-        T = ts.shape[0]
-        return np.array(
-            [ts[(shift):T - k + shift] for shift in np.arange(0, k + 1)])
-
-
-    def get_GCC(ts1, ts2):
-        k = 17
-        Xi = k_matrix(ts1, k)
-        Xj = k_matrix(ts2, k)
-        Xij = np.concatenate((Xi, Xj))
-        GCC = np.linalg.det(np.corrcoef(Xij)) ** (1 / (k + 1)) / (
-            np.linalg.det(np.corrcoef(Xi)) ** (1 / (k + 1)) \
-            ,* np.linalg.det(np.corrcoef(Xj)) ** (1 / (k + 1)) )
-        return GCC
-
-
-    pdist_gcc = pdist(consommation.values.T, get_GCC)
-    DM_GCC = squareform(pdist_gcc)
-    DM_GCC = pd.DataFrame(
-        DM_GCC, index=consommation.columns, columns=consommation.columns)
-  #+END_SRC 
-
-  #+RESULTS:
-  #+BEGIN_SRC ipython
-  #+END_SRC
-
-
-  #+BEGIN_SRC ipython :session :results output code :exports both 
-    import scipy.cluster.hierarchy as hcl
-    from scipy.spatial.distance import pdist
-
-    linkage_gcc = hcl.single(pdist_gcc)
-    print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
-
-    linkage_gcc = hcl.ward(pdist_gcc)
-    print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
-
-    pdist_euc = pdist(consommation.values.T)
-    linkage_euc = hcl.ward(pdist_euc)
-    print (hcl.cophenet(linkage_euc, pdist_euc)[0])
-  #+END_SRC 
-
-  #+RESULTS:
-  #+BEGIN_SRC ipython
-  0.690518705818
-  0.665986421017
-  0.725037291315
-  #+END_SRC
-
-
-#+BEGIN_SRC ipython :session
-  from sklearn.metrics import silhouette_score, silhouette_samples
-  import matplotlib.cm as cm
-
-  linkage = hcl.linkage(squareform(DM_GCC), method='single')
-  clusters = hcl.fcluster(linkage, t=7, criterion="maxclust")
-
-  silhouette_score(DM_GCC, clusters, metric='precomputed')
-
-
-
-  for n_clusters in np.arange(2,20,1):
-      cluster_labels = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
-      silhouette_avg = silhouette_score(DM_GCC, cluster_labels, metric='precomputed')
-      print("For n_clusters =", n_clusters,
-            "The average silhouette_score is :", silhouette_avg)
-
-
-
-
-#+END_SRC
-
- #+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
-# Compute the silhouette scores for each sample
-
-n_clusters = 7
-cluster_labels = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
-sample_silhouette_values = silhouette_samples(DM_GCC, cluster_labels, metric='precomputed')
-silhouette_avg = silhouette_score(DM_GCC, cluster_labels, metric='precomputed')
-
-y_lower = 10
-for i in range(n_clusters):
-    # Aggregate the silhouette scores for samples belonging to
-    # cluster i, and sort them
-    ith_cluster_silhouette_values = \
-        sample_silhouette_values[cluster_labels == i]
-
-    ith_cluster_silhouette_values.sort()
-
-    size_cluster_i = ith_cluster_silhouette_values.shape[0]
-    y_upper = y_lower + size_cluster_i
-
-    color = cm.spectral(float(i) / n_clusters)
-    plt.fill_betweenx(np.arange(y_lower, y_upper),
-                      0, ith_cluster_silhouette_values,
-                      facecolor=color, edgecolor=color, alpha=0.7)
-
-    # Label the silhouette plots with their cluster numbers at the middle
-    plt.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-
-    # Compute the new y_lower for next plot
-    y_lower = y_upper + 10  # 10 for the 0 samples
-    # The vertical line for average silhouette score of all the values
-    plt.axvline(x=silhouette_avg, color="red", linestyle="--")
+#+BEGIN_SRC R :session
+k<-37
 #+END_SRC
 
 #+RESULTS:
-:RESULTS:
-# Out[628]:
-[[file:./obipy-resources/17950aOc.png]]
-:END:
-
-
-#+BEGIN_SRC ipython :session :exports none :eval no
-pickle.dump(DM_GCC, open(join(data_path, "DM_GCC_17.p"), "wb"))
-#+END_SRC
-
-#+RESULTS:
-
-#+BEGIN_SRC ipython :session :exports none
-import pickle
-from os.path import join
-
-data_path = 'data'
-
-DM_GCC = pickle.load(open(join(data_path, "DM_GCC_17.p"), "rb"))
-#+END_SRC
-
-#+RESULTS:
-: # Out[8]:
-
+: 37
 
 #+BEGIN_SRC R :session
   kMatrix <- function(ts, k) {
@@ -853,78 +675,269 @@ DM_GCC = pickle.load(open(join(data_path, "DM_GCC_17.p"), "rb"))
     DM_GCC[combinations[,d][2], combinations[,d][1]] <- distance
   }
 #+END_SRC
+*** Python
+
+    #+BEGIN_SRC ipython :session
+    k=37
+    #+END_SRC
+
+    #+RESULTS:
+    : # Out[4]:
+
+
+    #+BEGIN_SRC ipython :session :results output code :exports both 
+    import numpy as np
+    from scipy.spatial.distance import pdist
+    from scipy.spatial.distance import squareform
+    import itertools
+    import pickle
+
+
+    def k_matrix(ts, k):
+        T = ts.shape[0]
+        return np.array(
+            [ts[(shift):T - k + shift] for shift in np.arange(0, k + 1)])
+
+
+    def get_GCC(ts1, ts2):
+        k = 37
+        Xi = k_matrix(ts1, k)
+        Xj = k_matrix(ts2, k)
+        Xij = np.concatenate((Xi, Xj))
+        GCC = np.linalg.det(np.corrcoef(Xij)) ** (1 / (k + 1)) / (
+            np.linalg.det(np.corrcoef(Xi)) ** (1 / (k + 1)) \
+            ,* np.linalg.det(np.corrcoef(Xj)) ** (1 / (k + 1)) )
+        return GCC
+
+
+    pdist_gcc = pdist(consommation.values.T, get_GCC)
+    DM_GCC = squareform(pdist_gcc)
+    DM_GCC = pd.DataFrame(
+        DM_GCC, index=consommation.columns, columns=consommation.columns)
+    #+END_SRC 
+
+    #+RESULTS:
+    #+BEGIN_SRC ipython
+    #+END_SRC
+
+
+
+    #+BEGIN_SRC ipython :session :exports none 
+    import pickle
+    pickle.dump({'DM':DM_GCC,'pdist':pdist_gcc}, open(join(data_path, "GCC_37.p"), "wb"))
+    #+END_SRC
+
+    #+RESULTS:
+    : # Out[14]:
+
+    #+BEGIN_SRC ipython :session :exports none
+    import pickle
+    from os.path import join
+
+    data_path = 'data'
+
+    GCC = pickle.load(open(join(data_path, "GCC_37.p"), "rb"))
+    DM_GCC = GCC['DM']
+    pdist_gcc = GCC['pdist']
+    #+END_SRC
+
+    #+RESULTS:
+    : # Out[8]:
 
 * Clustering
- #+BEGIN_SRC ipython :session :exports both :results raw drawer
-     import inspect
+** Linkage
+*** Python
+     #+BEGIN_SRC ipython :session :results output code :exports both 
+       import scipy.cluster.hierarchy as hcl
+       from scipy.spatial.distance import pdist
 
-     import numpy as np
-     from statsmodels.tsa.stattools import pacf    
-     import statsmodels.tsa.api as smt
+       linkage_gcc = hcl.single(pdist_gcc)
+       print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
 
-     import src.helpers as helpers
- #+END_SRC
+       linkage_gcc = hcl.average(pdist_gcc)
+       print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
 
- #+RESULTS:
- :RESULTS:
- :END:
+       linkage_gcc = hcl.centroid(pdist_gcc)
+       print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
 
-** Determination of the number of clusters
-  #+BEGIN_SRC ipython :session :ipyfile  :exports both
-import scipy.cluster.hierarchy as hcl
-from scipy.spatial.distance import squareform
-import numpy as np
+       linkage_gcc = hcl.weighted(pdist_gcc)
+       print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
 
-linkage = hcl.linkage(squareform(DM_GCC), method='single')
-  #+END_SRC
+       linkage_gcc = hcl.median(pdist_gcc)
+       print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
 
-  #+RESULTS:
-  : # Out[512]:
+       linkage_gcc = hcl.complete(pdist_gcc)
+       print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
+
+       linkage_gcc = hcl.ward(pdist_gcc)
+       print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
+
+       # pdist_euc = pdist(consommation.values.T)
+       # linkage_euc = hcl.ward(pdist_euc)
+       # print (hcl.cophenet(linkage_euc, pdist_euc)[0])
+     #+END_SRC 
+
+     #+RESULTS:
+     #+BEGIN_SRC ipython
+     0.699811597611
+     0.753343991533
+     0.743290414411
+     0.764965857314
+     0.701246468206
+     0.688839271715
+     0.70478579482
+     #+END_SRC
 
 
-#+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
-  from scipy.cluster.hierarchy import dendrogram
+     #+BEGIN_SRC ipython :session :ipyfile  :exports both
+   import scipy.cluster.hierarchy as hcl
+   from scipy.spatial.distance import squareform
+   import numpy as np
 
-  labels = [label.split('_')[0] for label in DM_GCC.columns.values]
-  unique_labels = np.unique(labels)
+   linkage = hcl.linkage(squareform(DM_GCC), method='weighted')
+     #+END_SRC
 
-  dendrogram(linkage,
-             labels = labels)
+     #+RESULTS:
+     : # Out[95]:
 
-  my_palette = plt.cm.get_cmap("nipy_spectral", len(unique_labels))
-  label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
 
-  ax = plt.gca()
-  xlbls = ax.get_xmajorticklabels()
-  for lbl in xlbls:
-      lbl.set_color(label_color[lbl.get_text()])
+   #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+   import seaborn as sns
+   linkage = hcl.linkage(squareform(DM_GCC), method='weighted')
+   sns.clustermap(DM_GCC, row_linkage=linkage, col_linkage=linkage)
+   #+END_SRC
 
-  plt.show()
+   #+RESULTS:
+   :RESULTS:
+   # Out[228]:
+   : <seaborn.matrix.ClusterGrid at 0x7fabc50167f0>
+   [[file:./obipy-resources/117268hE.png]]
+   :END:
+
+   #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+     from scipy.cluster.hierarchy import dendrogram
+
+     labels = [label.split('_')[0] for label in DM_GCC.columns.values]
+     unique_labels = np.unique(labels)
+
+     dendrogram(linkage,
+                labels = labels)
+
+     my_palette = plt.cm.get_cmap("nipy_spectral", len(unique_labels))
+     label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+
+     ax = plt.gca()
+     xlbls = ax.get_xmajorticklabels()
+     for lbl in xlbls:
+         lbl.set_color(label_color[lbl.get_text()])
+
+     ax.axhline(.5, color='red', linestyle='dashed')
+     plt.show()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[177]:
+   [[file:./obipy-resources/11726uBb.png]]
+   :END:
+
+
+    #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+      labels = [label.split('_')[1] for label in DM_GCC.columns.values]
+      unique_labels = np.unique(labels)
+      dendrogram(linkage,
+                  labels = labels)
+      my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+      label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+      ax = plt.gca()
+      xlbls = ax.get_xmajorticklabels()
+      for lbl in xlbls:
+          lbl.set_color(label_color[lbl.get_text()])
+      ax.axhline(.5, color='red', linestyle='dashed')
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[161]:
+    : <matplotlib.lines.Line2D at 0x7fabc825b588>
+    [[file:./obipy-resources/11726uzy.png]]
+    :END:
+*** R
+    #+BEGIN_SRC R :session :results output drawer
+    cor(as.dist(DM),cophenetic(hclust(as.dist(DM), method = 'average')))
+    cor(as.dist(DM),cophenetic(hclust(as.dist(DM), method = 'single')))
+    cor(as.dist(DM),cophenetic(hclust(as.dist(DM), method = 'median')))
+    cor(as.dist(DM),cophenetic(hclust(as.dist(DM), method = 'ward.D2')))
+    cor(as.dist(DM),cophenetic(hclust(as.dist(DM), method = 'complete')))
+    cor(as.dist(DM),cophenetic(hclust(as.dist(DM), method = 'mcquitty')))
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    [1] 0.753344
+    [1] 0.6998116
+    [1] 0.5724388
+    [1] 0.7047858
+    [1] 0.6888393
+    [1] 0.7649659
+    :END:
+
+
+    #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/dendrogram_R.png
+      DM <- read.csv('./data/DM_GCC_37.csv', row.names=1)
+      head(DM)[,1:5]
+      hc <- hclust(as.dist(DM), method = 'mcquitty')
+      plot(hc)
+      groups <- cutree(hc, k=7)
+      rect.hclust(hc, k=7, border="red")
+    #+END_SRC
+
+    #+RESULTS:
+    [[file:./img/dendrogram_R.png]]
+
+    #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/dendrogram2_R.png
+    res <- hcut(as.dist(DM), k = 7, isdiss=TRUE)
+    fviz_dend(res, rect = TRUE)
+    #+END_SRC
+
+    #+RESULTS:
+    [[file:./img/dendrogram2_R.png]]
+
+    #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/region_clusters_R.png
+    library(factoextra)
+    fviz_cluster(list(data=DM, cluster=groups), geom='point')
+    #+END_SRC
+
+    #+RESULTS:
+    [[file:./img/region_clusters_R.png]]
+
+#+BEGIN_SRC R :session :exports both :results output graphics :file ./img/sil_clusters_R.png
+require("cluster")
+sil <- silhouette(groups, DM)
+fviz_silhouette(sil)
 #+END_SRC
 
 #+RESULTS:
-:RESULTS:
-# Out[552]:
-[[file:./obipy-resources/17950lIs.png]]
-:END:
+[[file:./img/sil_clusters_R.png]]
 
+** Determination of the number of clusters
+*** Python
 
-
-#+BEGIN_SRC ipython :session :ipyfile ./img/elbow.png :exports both :results raw drawer
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
   plt.figure()
   plt.plot(range(1, len(linkage)+1), linkage[::-1, 2])
   ax = plt.gca()
-  ax.set_xlim([0,50])
-  ax.set_ylim([0,400])
+  ax.set_xlim([0,70])
+  ax.set_ylim([0,1])
   ax.set_xlabel("Number of clusters")
   ax.set_ylabel("Between clusters distance")
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[571]:
+# Out[117]:
 : Text(0,0.5,'Between clusters distance')
-[[file:./img/elbow.png]]
+[[file:./obipy-resources/11726SkM.png]]
 :END:
 
 
@@ -938,13 +951,114 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
 
 #+RESULTS:
 :RESULTS:
-# Out[572]:
-: [2, 5]
+# Out[118]:
+: [4, 23]
 :END:
 
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,70,1), [silhouette_score(DM_GCC,
+                                                hcl.fcluster(linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,70,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[120]:
+[[file:./obipy-resources/11726fuS.png]]
+:END:
+
+
+ #+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+# Compute the silhouette scores for each sample
+
+n_clusters = 7
+cluster_labels = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
+n_clusters = len(np.unique(cluster_labels))
+sample_silhouette_values = silhouette_samples(DM_GCC, cluster_labels, metric='precomputed')
+silhouette_avg = silhouette_score(DM_GCC, cluster_labels, metric='precomputed')
+
+y_lower = 10
+for i in range(n_clusters):
+    # Aggregate the silhouette scores for samples belonging to
+    # cluster i, and sort them
+    ith_cluster_silhouette_values = \
+        sample_silhouette_values[cluster_labels == i+1]
+
+    ith_cluster_silhouette_values.sort()
+
+    size_cluster_i = ith_cluster_silhouette_values.shape[0]
+    y_upper = y_lower + size_cluster_i
+
+    color = cm.spectral(float(i) / n_clusters)
+    plt.fill_betweenx(np.arange(y_lower, y_upper),
+                      0, ith_cluster_silhouette_values,
+                      facecolor=color, edgecolor=color, alpha=0.7)
+
+    # Label the silhouette plots with their cluster numbers at the middle
+    plt.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+    # Compute the new y_lower for next plot
+    y_lower = y_upper + 10  # 10 for the 0 samples
+    # The vertical line for average silhouette score of all the values
+    plt.axvline(x=silhouette_avg, color="red", linestyle="--")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[175]:
+[[file:./obipy-resources/11726UtO.png]]
+:END:
+
+ #+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+# Compute the silhouette scores for each sample
+
+n_clusters = 8
+cluster_labels = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
+n_clusters = len(np.unique(cluster_labels))
+sample_silhouette_values = silhouette_samples(DM_GCC, cluster_labels, metric='precomputed')
+silhouette_avg = silhouette_score(DM_GCC, cluster_labels, metric='precomputed')
+
+y_lower = 10
+for i in range(n_clusters):
+    # Aggregate the silhouette scores for samples belonging to
+    # cluster i, and sort them
+    ith_cluster_silhouette_values = \
+        sample_silhouette_values[cluster_labels == i+1]
+
+    ith_cluster_silhouette_values.sort()
+
+    size_cluster_i = ith_cluster_silhouette_values.shape[0]
+    y_upper = y_lower + size_cluster_i
+
+    color = cm.spectral(float(i) / n_clusters)
+    plt.fill_betweenx(np.arange(y_lower, y_upper),
+                      0, ith_cluster_silhouette_values,
+                      facecolor=color, edgecolor=color, alpha=0.7)
+
+    # Label the silhouette plots with their cluster numbers at the middle
+    plt.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+    # Compute the new y_lower for next plot
+    y_lower = y_upper + 10  # 10 for the 0 samples
+    # The vertical line for average silhouette score of all the values
+    plt.axvline(x=silhouette_avg, color="red", linestyle="--")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[176]:
+[[file:./obipy-resources/11726h3U.png]]
+:END:
+
+
+
 ** Clustering methods comparison  
+*** Python
 
   #+BEGIN_SRC ipython :session :ipyfile ./img/n_clust1_TSNE.png :exports both :results raw drawer
+    from sklearn.manifold import TSNE
     n_clusters = 7
     clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
 
@@ -959,7 +1073,7 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
 
   #+RESULTS:
   :RESULTS:
-  # Out[640]:
+  # Out[229]:
   : Text(0,0.5,'y-tsne')
   [[file:./img/n_clust1_TSNE.png]]
   :END:
@@ -982,46 +1096,27 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
 
   #+RESULTS:
   :RESULTS:
-  # Out[641]:
+  # Out[230]:
   : Text(0,0.5,'2nd component')
-  [[file:./obipy-resources/179500io.png]]
+  [[file:./obipy-resources/117269Uj.png]]
   :END:
 
-
-  #+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
-    n_clusters = 7
-    clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
-
-    tsne_2dim = TSNE(n_components=2).fit_transform(consommation.T)
-
-    plt.figure()
-    plt.scatter(tsne_2dim[:, 0], tsne_2dim[:, 1], c=clusters, cmap=plt.cm.get_cmap('Paired', n_clusters), alpha=0.3)
-    ax = plt.gca()
-    ax.set_xlabel("x-tsne")
-    ax.set_ylabel("y-tsne")
-  #+END_SRC
-
-  #+RESULTS:
-  :RESULTS:
-  # Out[634]:
-  : Text(0,0.5,'y-tsne')
-  [[file:./obipy-resources/17950nYi.png]]
-  :END:
+  
 
 
 * Plot Clusters
 
+** Mapping the clusters
+*** Python
+
 #+BEGIN_SRC ipython :session
   n_clusters = 7
-  linkage = hcl.linkage(squareform(DM_GCC), method='single')
+  linkage = hcl.linkage(squareform(DM_GCC), method='weighted')
   clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
-  clusters = hcl.fcluster(linkage, t=12, criterion="maxclust_monocrit")
 #+END_SRC
 
 #+RESULTS:
-: # Out[523]:
-
-** Mapping the clusters
+: # Out[231]:
 
  #+BEGIN_SRC ipython :session :exports both
    regions = [string.split('_')[0] for string in consommation.columns]
@@ -1032,7 +1127,7 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
  #+END_SRC
 
  #+RESULTS:
- : # Out[524]:
+ : # Out[232]:
 
  #+BEGIN_SRC ipython :session :exports both
    region_cluster = consommation_clusters.groupby(by="Region")["Cluster"].value_counts().index.to_frame()
@@ -1059,7 +1154,7 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
  #+END_SRC
 
  #+RESULTS:
- : # Out[525]:
+ : # Out[233]:
 
 
  #+BEGIN_SRC ipython :session :exports code :results silent
@@ -1077,70 +1172,23 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
  #+END_SRC
 
 
-
-** Check within regions clusters
+* Check within regions clusters
+** Python
   
  #+BEGIN_SRC ipython :session
-   n_clusters = 7
-   linkage = hcl.linkage(squareform(DM_GCC), method='single')
+   linkage = hcl.linkage(squareform(DM_GCC), method='weighted')
    clusters = hcl.fcluster(linkage, t=7, criterion="maxclust")
  #+END_SRC
 
  #+RESULTS:
- : # Out[574]:
+ : # Out[235]:
 
 
- #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
-   plt.subplot(211)
-   labels = [label.split('_')[0] for label in DM_GCC.columns.values]
-   unique_labels = np.unique(labels)
-   dendrogram(linkage,
-               labels = labels)
-   my_palette = plt.cm.get_cmap("nipy_spectral", len(unique_labels))
-   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
-   ax = plt.gca()
-   xlbls = ax.get_xmajorticklabels()
-   for lbl in xlbls:
-       lbl.set_color(label_color[lbl.get_text()])
-
-   plt.subplot(212)
-   labels = [label.split('_')[1] for label in DM_GCC.columns.values]
-   unique_labels = np.unique(labels)
-   dendrogram(linkage,
-               labels = labels)
-   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
-   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
-   ax = plt.gca()
-   xlbls = ax.get_xmajorticklabels()
-   for lbl in xlbls:
-       lbl.set_color(label_color[lbl.get_text()])
-
-   plt.show()
- #+END_SRC
-
- #+RESULTS:
- :RESULTS:
- # Out[575]:
- [[file:./obipy-resources/17950_qg.png]]
- :END:
 
  #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
    sub_DM_GCC = DM_GCC.loc[clusters==1, clusters==1]
-   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='ward')
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
 
-   plt.subplot(211)
-   labels = [label.split('_')[0] for label in sub_DM_GCC.columns.values]
-   unique_labels = np.unique(labels)
-   dendrogram(sub_linkage,
-               labels = labels)
-   my_palette = plt.cm.get_cmap("nipy_spectral", len(unique_labels))
-   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
-   ax = plt.gca()
-   xlbls = ax.get_xmajorticklabels()
-   for lbl in xlbls:
-       lbl.set_color(label_color[lbl.get_text()])
-
-   plt.subplot(212)
    labels = [label.split('_')[1] for label in sub_DM_GCC.columns.values]
    unique_labels = np.unique(labels)
    dendrogram(sub_linkage,
@@ -1157,27 +1205,28 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
 
  #+RESULTS:
  :RESULTS:
- # Out[426]:
- [[file:./obipy-resources/179507fQ.png]]
+ # Out[236]:
+ [[file:./obipy-resources/11726Kfp.png]]
  :END:
+
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,10,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,10,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[237]:
+[[file:./obipy-resources/11726Xpv.png]]
+:END:
 
  #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
    sub_DM_GCC = DM_GCC.loc[clusters==2, clusters==2]
-   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='ward')
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
 
-   plt.subplot(211)
-   labels = [label.split('_')[0] for label in sub_DM_GCC.columns.values]
-   unique_labels = np.unique(labels)
-   dendrogram(sub_linkage,
-               labels = labels)
-   my_palette = plt.cm.get_cmap("nipy_spectral", len(unique_labels))
-   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
-   ax = plt.gca()
-   xlbls = ax.get_xmajorticklabels()
-   for lbl in xlbls:
-       lbl.set_color(label_color[lbl.get_text()])
-
-   plt.subplot(212)
    labels = [label.split('_')[1] for label in sub_DM_GCC.columns.values]
    unique_labels = np.unique(labels)
    dendrogram(sub_linkage,
@@ -1194,16 +1243,106 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
 
  #+RESULTS:
  :RESULTS:
- # Out[427]:
- [[file:./obipy-resources/17950IqW.png]]
+ # Out[238]:
+ [[file:./obipy-resources/11726kz1.png]]
  :END:
 
 
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,10,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,10,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[239]:
+[[file:./obipy-resources/11726W9E.png]]
+:END:
 
 
  #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
    sub_DM_GCC = DM_GCC.loc[clusters==3, clusters==3]
-   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='ward')
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
+
+   labels = [label.split('_')[1] for label in sub_DM_GCC.columns.values]
+   unique_labels = np.unique(labels)
+   dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[240]:
+ [[file:./obipy-resources/11726jHL.png]]
+ :END:
+
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,10,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,10,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[241]:
+[[file:./obipy-resources/11726wRR.png]]
+:END:
+
+ #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+   sub_DM_GCC = DM_GCC.loc[clusters==4, clusters==4]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
+
+   labels = [label.split('_')[1] for label in sub_DM_GCC.columns.values]
+   unique_labels = np.unique(labels)
+   dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[242]:
+ [[file:./obipy-resources/117269bX.png]]
+ :END:
+
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,10,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,10,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[243]:
+[[file:./obipy-resources/11726Kmd.png]]
+:END:
+
+
+ #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+   sub_DM_GCC = DM_GCC.loc[clusters==5, clusters==5]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
 
    plt.subplot(211)
    labels = [label.split('_')[0] for label in sub_DM_GCC.columns.values]
@@ -1234,14 +1373,28 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
 
  #+RESULTS:
  :RESULTS:
- # Out[428]:
- [[file:./obipy-resources/17950V0c.png]]
+ # Out[244]:
+ [[file:./obipy-resources/11726Xwj.png]]
  :END:
 
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,10,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,10,1)])
+  plt.show()
+#+END_SRC
 
- #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw graphics
-   sub_DM_GCC = DM_GCC.loc[clusters==4, clusters==4]
-   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='ward')
+#+RESULTS:
+:RESULTS:
+# Out[245]:
+[[file:./obipy-resources/11726k6p.png]]
+:END:
+
+
+ #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+   sub_DM_GCC = DM_GCC.loc[clusters==6, clusters==6]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
 
    plt.subplot(211)
    labels = [label.split('_')[0] for label in sub_DM_GCC.columns.values]
@@ -1271,10 +1424,126 @@ linkage = hcl.linkage(squareform(DM_GCC), method='single')
  #+END_SRC
 
  #+RESULTS:
- # Out[429]:
- [[file:./obipy-resources/17950i-i.png]]
- # Out[419]:
- [[file:./obipy-resources/17950vB1.png]]
+ :RESULTS:
+ # Out[246]:
+ [[file:./obipy-resources/11726xEw.png]]
+ :END:
+
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,10,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,10,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[247]:
+[[file:./obipy-resources/11726-O2.png]]
+:END:
+
+ #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+   sub_DM_GCC = DM_GCC.loc[clusters==7, clusters==7]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
+
+   plt.subplot(211)
+   labels = [label.split('_')[0] for label in sub_DM_GCC.columns.values]
+   unique_labels = np.unique(labels)
+   dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("nipy_spectral", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.subplot(212)
+   labels = [label.split('_')[1] for label in sub_DM_GCC.columns.values]
+   unique_labels = np.unique(labels)
+   dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[249]:
+ [[file:./obipy-resources/117269iL.png]]
+ :END:
+
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,10,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,10,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[250]:
+[[file:./obipy-resources/11726KtR.png]]
+:END:
+
+ #+BEGIN_SRC ipython :session :ipyfile  :exports both :results raw drawer
+   sub_DM_GCC = DM_GCC.loc[clusters==8, clusters==8]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='weighted')
+
+   plt.subplot(211)
+   labels = [label.split('_')[0] for label in sub_DM_GCC.columns.values]
+   unique_labels = np.unique(labels)
+   dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("nipy_spectral", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.subplot(212)
+   labels = [label.split('_')[1] for label in sub_DM_GCC.columns.values]
+   unique_labels = np.unique(labels)
+   dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[225]:
+ [[file:./obipy-resources/11726wDp.png]]
+ :END:
+
+#+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
+  plt.plot(np.arange(2,15,1), [silhouette_score(sub_DM_GCC,
+                                                hcl.fcluster(sub_linkage, t=n, criterion="maxclust"),
+                                                metric='precomputed')
+                               for n in np.arange(2,15,1)])
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[227]:
+[[file:./obipy-resources/11726KY1.png]]
+:END:
 
 
 * References:

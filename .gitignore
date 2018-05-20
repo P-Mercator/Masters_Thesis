@@ -6,3 +6,6 @@ src/__pycache__/
 img
 data
 obipy-resources
+/auto/thesis.el
+*.log
+/*.tex
