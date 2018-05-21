@@ -9,3 +9,5 @@ obipy-resources
 /auto/thesis.el
 *.log
 /*.tex
+/_minted-thesis
+/*.bbl

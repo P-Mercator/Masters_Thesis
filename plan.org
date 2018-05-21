@@ -63,102 +63,24 @@
   data.loc[data['Périmètre'] == 'Aquitaine, Limousin et Poitou-Charentes', 'Périmètre'] = 'Nouvelle-Aquitaine'
   data.loc[data['Périmètre'] == 'Languedoc-Roussillon et Midi-Pyrénées', 'Périmètre'] = 'Occitanie'
  
-  data.head()
-  #+END_SRC
-  
-  #+RESULTS:
-  :RESULTS:
-  # Out[1]:
-  #+BEGIN_EXAMPLE
-    Périmètre               Nature        Date Heures  Consommation Thermique  \
-    0  Normandie  Données définitives  2013-01-01  00:00           NaN        ND
-    1  Normandie  Données définitives  2013-01-01  00:15           NaN       NaN
-    2  Normandie  Données définitives  2013-01-01  00:30        3683.0       432
-    3  Normandie  Données définitives  2013-01-01  00:45           NaN       NaN
-    4  Normandie  Données définitives  2013-01-01  01:00        3549.0       433
-
-    Nucléaire Eolien Solaire Hydraulique Pompage Bioénergies Ech. physiques  \
-    0        ND     ND      ND          ND      ND          ND             ND
-    1       NaN    NaN     NaN         NaN     NaN         NaN            NaN
-    2      8200    216       0          12       -          54          -5233
-    3       NaN    NaN     NaN         NaN     NaN         NaN            NaN
-    4      8224    190       0          12       -          54          -5366
-
-    Datetime
-    0 2013-01-01 00:00:00
-    1 2013-01-01 00:15:00
-    2 2013-01-01 00:30:00
-    3 2013-01-01 00:45:00
-    4 2013-01-01 01:00:00
-  #+END_EXAMPLE
-  :END:
-
-As all the regions are in the same columns, I have used a pivot table to get 1
-column per region for each 'Datetime' (1 column for each of 12 regions). Additionally, it is important to set the timezone to UTC in order to account for
-daylight saving time change and avoid removing data or introducing NAs.
-
-#+BEGIN_SRC ipython :session :exports both :results raw drawer
   # Reshape to row = datetime and column = region, all values are consumption
   consommation = pd.pivot_table(
       data, values='Consommation', index='Datetime', columns=['Périmètre'])
   # Set timezone as it creates problem when changing between daylight saving times.
   consommation = consommation.tz_localize('UTC', ambiguous=False)
   consommation = consommation.resample('30T').mean()
+  #+END_SRC
+  
 
-  consommation.head()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[7]:
-#+BEGIN_EXAMPLE
-  Périmètre                  Auvergne-Rhône-Alpes  Bourgogne-Franche-Comté  \
-  Datetime
-  2013-01-01 00:00:00+00:00                   NaN                      NaN
-  2013-01-01 00:30:00+00:00                8173.0                   2357.0
-  2013-01-01 01:00:00+00:00                7944.0                   2289.0
-  2013-01-01 01:30:00+00:00                7896.0                   2326.0
-  2013-01-01 02:00:00+00:00                7882.0                   2409.0
-  
-  Périmètre                  Bretagne  Centre-Val de Loire  Grand-Est  \
-  Datetime
-  2013-01-01 00:00:00+00:00       NaN                  NaN        NaN
-  2013-01-01 00:30:00+00:00    3050.0               2476.0     4943.0
-  2013-01-01 01:00:00+00:00    2866.0               2319.0     4811.0
-  2013-01-01 01:30:00+00:00    2735.0               2560.0     4840.0
-  2013-01-01 02:00:00+00:00    2874.0               2395.0     4897.0
-  
-  Périmètre                  Hauts-de-France  Ile-de-France  Normandie  \
-  Datetime
-  2013-01-01 00:00:00+00:00              NaN            NaN        NaN
-  2013-01-01 00:30:00+00:00           5989.0         9134.0     3683.0
-  2013-01-01 01:00:00+00:00           5832.0         8822.0     3549.0
-  2013-01-01 01:30:00+00:00           5926.0         8499.0     3570.0
-  2013-01-01 02:00:00+00:00           5695.0         8229.0     3569.0
-  
-  Périmètre                  Nouvelle-Aquitaine  Occitanie    PACA  \
-  Datetime
-  2013-01-01 00:00:00+00:00                 NaN        NaN     NaN
-  2013-01-01 00:30:00+00:00              5464.0     5228.0  5570.0
-  2013-01-01 01:00:00+00:00              5422.0     4955.0  5698.0
-  2013-01-01 01:30:00+00:00              5514.0     4888.0  5680.0
-  2013-01-01 02:00:00+00:00              5443.0     4881.0  5577.0
-  
-  Périmètre                  Pays-de-la-Loire
-  Datetime
-  2013-01-01 00:00:00+00:00               NaN
-  2013-01-01 00:30:00+00:00            3595.0
-  2013-01-01 01:00:00+00:00            3359.0
-  2013-01-01 01:30:00+00:00            3313.0
-  2013-01-01 02:00:00+00:00            3383.0
-#+END_EXAMPLE
-:END:
+As all the regions are in the same columns, I have used a pivot table to get 1
+column per region for each 'Datetime' (1 column for each of 12 regions). Additionally, it is important to set the timezone to UTC in order to account for
+daylight saving time change and avoid removing data or introducing NAs.
 
 In those 12 time series we can see some
 outliers at the beginning of September 2017 where the data is close to 0. Those
 gaps are expected as this data was not yet consolidated.
 
-  #+BEGIN_SRC ipython :session :ipyfile ./img/plotSeries.png :exports both :results raw drawer
+  #+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
     import matplotlib.pyplot as plt
     %matplotlib inline
     
