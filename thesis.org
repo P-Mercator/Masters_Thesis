@@ -29,24 +29,23 @@
 ** Cluster electricity consumption using GCC
 ** Clustering time series
 * Methodology
-** Describe GCC
-** Describe data
+** Data description
    The electricity consumption was available at a 30 minutes frequency for each of
    the 12 regions of France from 2013 to 2017. Each year of each region can be
    downloaded from the French transmission operator (Rte) download portal[fn:1].
 
-| Périmètre | Nature              |       Date | Heures | Consommation |
-|-----------+---------------------+------------+--------+--------------|
-| Grand-Est | Données définitives | 2016-01-01 |  00:00 |         5130 |
-| Grand-Est | Données définitives | 2016-01-01 |  00:15 |              |
-| Grand-Est | Données définitives | 2016-01-01 |  00:30 |         5130 |
-| Grand-Est | Données définitives | 2016-01-01 |  00:45 |              |
-| Grand-Est | Données définitives | 2016-01-01 |  01:00 |         5014 |
+   Consumption from January 2013 to September of 2017 were downloaded for each of
+   the 12 metropolitan mainland regions of France (excluding Corsica). 
 
+   However, those regions are still very young, as before 2016, those were 21
+   separate regions. Regions in France lack separate legislative power, but can
+   manage a considerable part of their budget for main infrastructures such as
+   education, public transport, universities and research, and help to businesses.
+   It is therefore expected to find some interesting clusters, where we might see
+   some reminiscence of the old regions.
 
-[fn:1] http://www.rte-france.com/en/eco2mix/eco2mix-telechargement-en]]
+[fn:1] http://www.rte-france.com/en/eco2mix/eco2mix-telechargement-en
 
-* Results
 ** Data preparation
 *** Cleaning
     1. Append all regions and years together
@@ -57,106 +56,154 @@
        consumption values
     6. Resample the date as 30 minutes intervals
     7. Pivot the table again so that we get daily value for each row
-    8. 
-    9.
-    10. 
+    8. Save to access from R
 
-#+BEGIN_SRC ipython :session :exports none :results silent
-  from os.path import join
-  import glob
-  import pandas as pd
+    The complete data set was spread across 60 different tables that were
+    merged into one large table. 
 
-  data_path = "data"
+ | Périmètre | Nature              |       Date | Heures | Consommation |
+ |-----------+---------------------+------------+--------+--------------|
+ | Grand-Est | Données définitives | 2016-01-01 |  00:00 |         5130 |
+ | Grand-Est | Données définitives | 2016-01-01 |  00:15 |              |
+ | Grand-Est | Données définitives | 2016-01-01 |  00:30 |         5130 |
+ | Grand-Est | Données définitives | 2016-01-01 |  00:45 |              |
+ | Grand-Est | Données définitives | 2016-01-01 |  01:00 |         5014 |
+ | .....     |                     |            |        |              |
 
-  # Combine all the .xls interruptof each region
-  data = pd.concat([
-      pd.read_table(
-          file, encoding="cp1252", delimiter="\t", engine="python",
-          index_col=False).iloc[:-1, :]
-      for file in glob.glob(join(data_path, "*.xls"))
-  ])
+    As data rarely comes clean, there were some imperfections in the names of the
+    data. Here for some days the regions were named after the old regions e.g.
+    Languedoc-Roussillon et Midi-Pyrénées instead of Occitanie, or Aquitaine,
+    Limousin et Poitou-Charentes instead of Nouvelle-Aquitaine.
 
-  # Format type of variables
-  data["Consommation"] = pd.to_numeric(data["Consommation"], errors='coerce')
-  data["Datetime"] = pd.to_datetime(
-      (data["Date"] + '_' + data["Heures"]).apply(str), format='%Y-%m-%d_%H:%M')
+    With the raw data cleaned of imperfection, each column was formatted to
+    required data type. The date needing to be set as UTC in order to avoid
+    problems at the summer/winter time change. The data was resampled from 15
+    minutes to 30 minutes using a mean so as to deal with a problem of
+    Centre-Val de Loire in September 2017 where 30 minutes consumption was give
+    every 15 minutes.
+ 
+ #+BEGIN_SRC ipython :session :exports none :results silent
+   from os.path import join
+   import glob
+   import pandas as pd
 
-  # Correct regions names
-  data.loc[data['Périmètre'] == 'Auvergne et Rhône-Alpes', 'Périmètre'] = 'Auvergne-Rhône-Alpes'
-  data.loc[data['Périmètre'] == 'Bourgogne et Franche Comté', 'Périmètre'] = 'Bourgogne-Franche-Comté'
-  data.loc[data['Périmètre'] == 'Alsace, Champagne-Ardenne et Lorraine', 'Périmètre'] = 'Grand-Est'
-  data.loc[data['Périmètre'] == 'Nord-Pas-de-Calais et Picardie', 'Périmètre'] = 'Hauts-de-France'
-  data.loc[data['Périmètre'] == 'Aquitaine, Limousin et Poitou-Charentes', 'Périmètre'] = 'Nouvelle-Aquitaine'
-  data.loc[data['Périmètre'] == 'Languedoc-Roussillon et Midi-Pyrénées', 'Périmètre'] = 'Occitanie'
+   data_path = "data"
 
-  # Reshape to row = datetime and column = region, all values are consumption
-  consommation = pd.pivot_table(
-      data, values='Consommation', index='Datetime', columns=['Périmètre'])
-  # Set timezone as it creates problem when changing between daylight saving times.
-  consommation = consommation.tz_localize('UTC', ambiguous=False)
-  consommation = consommation.resample('30T').mean()
-  #+END_SRC
+   # Combine all the .xls interruptof each region
+   data = pd.concat([
+       pd.read_table(
+           file, encoding="cp1252", delimiter="\t", engine="python",
+           index_col=False).iloc[:-1, :]
+       for file in glob.glob(join(data_path, "*.xls"))
+   ])
 
-  
-  #+BEGIN_SRC ipython :session :ipyfile :exports results :results raw drawer
-    import matplotlib.pyplot as plt
-    %matplotlib inline
+   # Format type of variables
+   data["Consommation"] = pd.to_numeric(data["Consommation"], errors='coerce')
+   data["Datetime"] = pd.to_datetime(
+       (data["Date"] + '_' + data["Heures"]).apply(str), format='%Y-%m-%d_%H:%M')
 
-    consommation.loc[:,consommation.mean().sort_values(ascending=False).index].plot(
-        alpha=0.7, lw=.1, figsize=(16,9), colormap='Spectral')
-    leg = plt.legend(loc='upper right')
-    for lh in leg.legendHandles:
-        lh.set_linewidth(2)
-        lh.set_alpha(1)
-  #+END_SRC
+   # Correct regions names
+   data.loc[data['Périmètre'] == 'Auvergne et Rhône-Alpes', 'Périmètre'] = 'Auvergne-Rhône-Alpes'
+   data.loc[data['Périmètre'] == 'Bourgogne et Franche Comté', 'Périmètre'] = 'Bourgogne-Franche-Comté'
+   data.loc[data['Périmètre'] == 'Alsace, Champagne-Ardenne et Lorraine', 'Périmètre'] = 'Grand-Est'
+   data.loc[data['Périmètre'] == 'Nord-Pas-de-Calais et Picardie', 'Périmètre'] = 'Hauts-de-France'
+   data.loc[data['Périmètre'] == 'Aquitaine, Limousin et Poitou-Charentes', 'Périmètre'] = 'Nouvelle-Aquitaine'
+   data.loc[data['Périmètre'] == 'Languedoc-Roussillon et Midi-Pyrénées', 'Périmètre'] = 'Occitanie'
 
-  #+RESULTS:
-  :RESULTS:
-  # Out[42]:
-  [[file:./obipy-resources/18739LOz.png]]
-  :END:
+   # Reshape to row = datetime and column = region, all values are consumption
+   consommation = pd.pivot_table(
+       data, values='Consommation', index='Datetime', columns=['Périmètre'])
+   # Set timezone as it creates problem when changing between daylight saving times.
+   consommation = consommation.tz_localize('UTC', ambiguous=False)
+   consommation = consommation.resample('30T').mean()
+   #+END_SRC
 
-#+BEGIN_SRC ipython :session :exports none :results silent
-  import datetime
-
-  consommation["date"] = pd.to_datetime(consommation.index).date
-  consommation["time"] = pd.to_datetime(consommation.index).time
-  consommation = pd.pivot_table(pd.melt(consommation, id_vars=["date", "time"]),
-                                index="date", values="value", columns=["Périmètre", "time"])
-  consommation = consommation.loc[datetime.date(2013,1,2):, :]
-#+END_SRC
+| Périmètre                 | Auvergne-Rhône-Alpes | Bourgogne-Franche-Comté | ... |
+| Datetime                  |                      |                         |     |
+|---------------------------+----------------------+-------------------------+-----|
+| 2013-01-01_00:00:00+00:00 |                  NaN |                     NaN | ... |
+| 2013-01-01_00:30:00+00:00 |               8173.0 |                  2357.0 | ... |
+| 2013-01-01_01:00:00+00:00 |               7944.0 |                  2289.0 | ... |
+| 2013-01-01_01:30:00+00:00 |               7896.0 |                  2326.0 |     |
+| 2013-01-01_02:00:00+00:00 |               7882.0 |                  2409.0 |     |
 
 
-  #+BEGIN_SRC ipython :session :ipyfile :exports results :results raw drawer
-    mean_by_time  = consommation.groupby(level=1,  axis=1).mean().reset_index()
-    mean_by_time.loc[:,mean_by_time.mean().sort_values(ascending=False).index].plot(
-        alpha=0.9, lw=.5, figsize=(20,14), colormap='Spectral')
-    leg = plt.legend(loc='upper right')
-    for lh in leg.legendHandles:
-        lh.set_linewidth(2)
-        lh.set_alpha(1)
-#+END_SRC
+The region with the highest consumptions are observed in Iles-de-France and
+the lowest in the Centre-Val de Loire. We can also clearly see yearly
+seasonality with higher consumption during winter times.
 
-#+RESULTS:
-:RESULTS:
-# Out[45]:
-[[file:./obipy-resources/187399XC.png]]
-:END:
+   #+BEGIN_SRC ipython :session :ipyfile :exports results :results raw drawer
+     import matplotlib.pyplot as plt
+     %matplotlib inline
 
-This resulted in a table of 576 columns (48 x 12 regions) and 1794 rows/days.
+     consommation.loc[:,consommation.mean().sort_values(ascending=False).index].plot(
+         alpha=0.7, lw=.1, figsize=(16,9), colormap='Spectral')
+     leg = plt.legend(loc='upper right')
+     for lh in leg.legendHandles:
+         lh.set_linewidth(2)
+         lh.set_alpha(1)
+   #+END_SRC
 
-|  Périmètre | Auvergne-Rhône-Alpes |          |          |          |          |          |
-|       time |             00:00:00 | 00:30:00 | 01:00:00 | 01:30:00 | 02:00:00 | 02:30:00 |
-|------------+----------------------+----------+----------+----------+----------+----------|
-| 2013-01-02 |               7847.0 |   7674.0 |   7427.0 |   7441.0 |   7467.0 |   7550.0 |
-| 2013-01-03 |               9028.0 |   8839.0 |   8544.0 |   8560.0 |   8569.0 |   8667.0 |
-| 2013-01-04 |               8982.0 |   8754.0 |   8476.0 |   8480.0 |   8453.0 |   8554.0 |
-| 2013-01-05 |               8625.0 |   8465.0 |   8165.0 |   8134.0 |   8087.0 |   8149.0 |
-| 2013-01-06 |               8314.0 |   8097.0 |   7814.0 |   7791.0 |   7785.0 |   7842.0 |
+   #+RESULTS:
+   :RESULTS:
+   # Out[162]:
+   [[file:./obipy-resources/187391Sf.png]]
+   :END:
+
+
+ #+BEGIN_SRC ipython :session :exports none :results silent
+   import datetime
+
+   consommation["date"] = pd.to_datetime(consommation.index).date
+   consommation["time"] = pd.to_datetime(consommation.index).time
+   consommation = pd.pivot_table(pd.melt(consommation, id_vars=["date", "time"]),
+                                 index="date", values="value", columns=["Périmètre", "time"])
+   consommation = consommation.loc[datetime.date(2013,1,2):, :]
+ #+END_SRC
+
+
+   #+BEGIN_SRC ipython :session :ipyfile :exports results :results raw drawer
+     mean_by_time  = consommation.groupby(level=1,  axis=1).mean().reset_index()
+     mean_by_time.loc[:,mean_by_time.mean().sort_values(ascending=False).index].plot(
+         alpha=0.9, lw=.5, figsize=(20,14), colormap='Spectral')
+     leg = plt.legend(loc='upper right')
+     for lh in leg.legendHandles:
+         lh.set_linewidth(2)
+         lh.set_alpha(1)
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[45]:
+ [[file:./obipy-resources/187399XC.png]]
+ :END:
+
+ This resulted in a table of 576 columns (48 x 12 regions) and 1794 rows/days.
+
+ |  Périmètre | Auvergne-Rhône-Alpes |          |          |          |          |          |
+ |       time |             00:00:00 | 00:30:00 | 01:00:00 | 01:30:00 | 02:00:00 | 02:30:00 |
+ |------------+----------------------+----------+----------+----------+----------+----------|
+ | 2013-01-02 |               7847.0 |   7674.0 |   7427.0 |   7441.0 |   7467.0 |   7550.0 |
+ | 2013-01-03 |               9028.0 |   8839.0 |   8544.0 |   8560.0 |   8569.0 |   8667.0 |
+ | 2013-01-04 |               8982.0 |   8754.0 |   8476.0 |   8480.0 |   8453.0 |   8554.0 |
+ | 2013-01-05 |               8625.0 |   8465.0 |   8165.0 |   8134.0 |   8087.0 |   8149.0 |
+ | 2013-01-06 |               8314.0 |   8097.0 |   7814.0 |   7791.0 |   7785.0 |   7842.0 |
+
+
+ #+BEGIN_SRC ipython :session :exports none :results silent
+   # Merge multi index column names to read in R
+   consommation.columns = [col[0] + '_' + str(col[1]) for col in consommation.columns.values]
+   # Save to access from R
+   consommation.to_csv(join(data_path, "consommation.csv"))
+   # consommation = pd.read_csv(join(data_path, "consommation.csv"),index_col=[0], header=[0,1])
+ #+END_SRC
+
 *** Transformation
+** GCC description
 ** Distance calculation
-*** Selecting k
-*** Distance matrix
+**** Selecting k
+**** Distance matrix
+* Results
 ** Clustering
 ** Cluster analysis
 * Conclusion
