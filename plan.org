@@ -364,8 +364,8 @@ same autocorrelation function.
 
  #+RESULTS:
  :RESULTS:
- # Out[1]:
- [[file:./obipy-resources/117262qt.png]]
+ # Out[72]:
+ [[file:./obipy-resources/3170wg2.png]]
  :END:
 
  #+BEGIN_SRC ipython :session :ipyfile :exports both :results raw drawer
@@ -380,8 +380,8 @@ same autocorrelation function.
 
  #+RESULTS:
  :RESULTS:
- # Out[131]:
- [[file:./obipy-resources/23655_Ck.png]]
+ # Out[73]:
+ [[file:./obipy-resources/3170iqF.png]]
  :END:
  
 In Python is was possible to get the exact p-values and show that the largest
@@ -398,7 +398,7 @@ p-value is actually of order 10^{-22}.
          dfoutput['Critical Value (%s)' % key] = value
      return dfoutput
 
- consommation = consommation_diff
+ consommation = consommation.diff(7).diff(1).iloc[8:,:]
  p_values = consommation.apply(lambda x: test_stationarity(x)["p-value"])
  p_values.max()
    #+END_SRC
