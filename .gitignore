@@ -1,10 +1,13 @@
 .#*
 .idea/
+.DS_Store
+.Rhistory
 
 src/__pycache__/
 
 img
 data
+ltximg
 obipy-resources
 /auto/thesis.el
 *.log
