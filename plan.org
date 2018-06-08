@@ -528,9 +528,11 @@ Std of z score is between 1.00027991603  and  1.00027991603
      : : 20
 
      #+BEGIN_SRC ipython :session :exports both 
-     import statsmodels.api as sm
-     k = consommation.apply(lambda x: sm.tsa.arma_order_select_ic(x, ic='bic', trend='nc', max_ar=40, max_ma=1)['bic_min_order'][0]).max()
-     k
+       import statsmodels.api as sm
+       k = consommation.apply(
+           lambda x: sm.tsa.arma_order_select_ic(
+               x, ic='bic', trend='nc', max_ar=40, max_ma=1)['bic_min_order'][0]).max()
+       k
      #+END_SRC
 
 **** R
@@ -605,7 +607,6 @@ k<-37
 
     #+RESULTS:
     : # Out[4]:
-
 
     #+BEGIN_SRC ipython :session :results output code :exports both 
     import numpy as np
@@ -694,9 +695,6 @@ k<-37
        linkage_gcc = hcl.ward(pdist_gcc)
        print(hcl.cophenet(linkage_gcc, pdist_gcc)[0])
 
-       # pdist_euc = pdist(consommation.values.T)
-       # linkage_euc = hcl.ward(pdist_euc)
-       # print (hcl.cophenet(linkage_euc, pdist_euc)[0])
      #+END_SRC 
 
      #+RESULTS:
@@ -806,7 +804,7 @@ k<-37
 
 
     #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/dendrogram_R.png
-      DM <- read.csv('./data/DM_GCC_37.csv', row.names=1)
+      DM_GCC <- read.csv('./data/DM_GCC_37.csv', row.names=1)
       head(DM)[,1:5]
       hc <- hclust(as.dist(DM), method = 'mcquitty')
       plot(hc)

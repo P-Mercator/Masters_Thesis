@@ -1,36 +1,47 @@
-#+TITLE: France regional electricity consumption clustering using Generalised Cross Correlation.
-#+AUTHOR: Pierre Mercatoris
-#+DATE: <2018-05-19 Sat>
-#+EMAIL: mercatorispierre@gmail.com
+# #+TITLE: France regional electricity consumption clustering using Generalised Cross Correlation.
+# #+AUTHOR: Pierre Mercatoris
+# #+DATE: <2018-05-19 Sat>
+# #+EMAIL: mercatorispierre@gmail.com
 
-#+PROPERTY: header-args    :eval no-export
+#+PROPERTY: header-args :eval no-export :exports results
+#+PROPERTY: header-args:R :session kernel-fa938fa0-2cbb-4137-85bb-309de0897a3a.json
+#+PROPERTY: header-args:ipython :session kernel-459f87ab-a358-4580-b7be-967010698ff2.json
+#+PROPERTY: header-args:ipython+ :results raw drawer
 
-#+LATEX_CLASS: article
-#+LATEX_CLASS_OPTIONS: [12pt]
+# #+LATEX_CLASS: article
+# #+LATEX_CLASS_OPTIONS: [12pt]
 #+OPTIONS: toc:nil ^:{}
 #+EXPORT_EXCLUDE_TAGS: noexport
 
-#+LATEX_HEADER: \usepackage[top=1in, bottom=1.in, left=1in, right=1in]{geometry}
-#+LATEX_HEADER: \usepackage[utf8]{inputenc}
-#+LATEX_HEADER: \usepackage[T1]{fontenc}
-#+LATEX_HEADER: \usepackage{fixltx2e}
-#+LATEX_HEADER: \usepackage{natbib}
-#+LATEX_HEADER: \usepackage{url}
-#+LATEX_HEADER: \usepackage{minted}  % for source code
-#+LATEX_HEADER: \usepackage{graphicx}
-#+LATEX_HEADER: \usepackage{textcomp}
-#+LATEX_HEADER: \usepackage{amsmath}
-#+LATEX_HEADER: \usepackage{pdfpages}
-#+LATEX_HEADER: \usepackage{setspace}
-#+LATEX_HEADER: \usepackage[linktocpage, pdfstartview=FitH, colorlinks, linkcolor=blue, anchorcolor=blue, citecolor=blue,  filecolor=blue,  menucolor=blue,  urlcolor=blue]{hyperref}
+#+latex_header: \input{./latex/plantilla_memoria_tfm.tex}
+
+# #+LATEX_HEADER: \usepackage[top=1in, bottom=1.in, left=1in, right=1in]{geometry}
+# #+LATEX_HEADER: \usepackage[utf8]{inputenc}
+# #+LATEX_HEADER: \usepackage[T1]{fontenc}
+# #+LATEX_HEADER: \usepackage{fixltx2e}
+# #+LATEX_HEADER: \usepackage{natbib}
+# #+LATEX_HEADER: \usepackage{url}
+# #+LATEX_HEADER: \usepackage{minted}  % for source code
+# #+LATEX_HEADER: \usepackage{graphicx}
+# #+LATEX_HEADER: \usepackage{textcomp}
+# #+LATEX_HEADER: \usepackage{amsmath}
+# #+LATEX_HEADER: \usepackage{pdfpages}
+# #+LATEX_HEADER: \usepackage{setspace}
+# #+LATEX_HEADER: \usepackage[linktocpage, pdfstartview=FitH, colorlinks, linkcolor=blue, anchorcolor=blue, citecolor=blue,  filecolor=blue,  menucolor=blue,  urlcolor=blue]{hyperref}
 
 
-* Introduction
-** Cluster electricity consumption using GCC
+\pagebreak
+* TODO Introduction[0/2]
+** TODO Cluster electricity consumption using GCC
    cite:jain1988algorithms
-** Clustering time series
-* Methodology
-** Data description
+   
+   \pagebreak
+** TODO Clustering time series
+   
+   \pagebreak
+* TODO Methodology[3/4]
+** DONE Data description
+   CLOSED: [2018-05-28 Mon 22:44]
    The electricity consumption was available at a 30 minutes frequency for each of
    the 12 regions of France from 2013 to 2017. Each year of each region can be
    downloaded from the French transmission operator (Rte) download portal[fn:1].
@@ -47,8 +58,10 @@
 
 [fn:1] http://www.rte-france.com/en/eco2mix/eco2mix-telechargement-en
 
-** Data preparation
-*** Cleaning
+** DONE Data preparation
+   CLOSED: [2018-05-28 Mon 22:44]
+*** DONE Cleaning
+    CLOSED: [2018-06-08 Fri 11:04]
 
     The complete data set was spread across 60 different tables (years and regions) that were
     merged into one large table (table ref:tab:raw-series). 
@@ -72,12 +85,12 @@
     required data type. A pivot table was then used so as to move each region as
     a column, and each row is a consumption measurement. The date then needed to
     be set as UTC in order to avoid problems at the summer/winter time change.
-    As the original frequency of the data is 15 minutes but there are mostly
+    As the original frequency of the data is 15 minutes but as there are
     only data every 30 minutes, the table was resampled by taking the sum for
     each 30 minutes, resulting in the table below (table
     ref:tab:regional-series).
  
-#+BEGIN_SRC ipython :session :exports none :results silent
+#+BEGIN_SRC ipython :exports none :results silent
   from os.path import join
   import glob
   import pandas as pd
@@ -128,7 +141,7 @@ The region with the highest consumption are observed in the Iles-de-France and
 the lowest in the Centre-Val de Loire. We can also clearly see yearly
 seasonality with higher consumption during winter times (figure ref:fig:regions-consumption).
 
-   #+BEGIN_SRC ipython :session :ipyfile :exports results :results raw drawer
+   #+BEGIN_SRC ipython :ipyfile
      import matplotlib.pyplot as plt
      %matplotlib inline
 
@@ -151,7 +164,7 @@ The pivot table was used again so that each time of the day is a columns, and
 each row is a daily value for a certain time and region, the resulting table has
 576 columns (48 x 12 regions) and 1794 rows/days.(table ref:tab:final-data).
 
- #+BEGIN_SRC ipython :session :exports none :results silent
+ #+BEGIN_SRC ipython :exports none :results silent
    import datetime
 
    consommation["date"] = pd.to_datetime(consommation.index).date
@@ -176,7 +189,7 @@ each row is a daily value for a certain time and region, the resulting table has
 In figure ref:fig:day-consumption, we can already see that consumption midday
 is much higher than at night, with more spread in the summmer than in the winter.
 
-   #+BEGIN_SRC ipython :session :ipyfile :exports results :results raw drawer
+   #+BEGIN_SRC ipython :ipyfile
      mean_by_time  = consommation.groupby(level=1,  axis=1).mean().reset_index()
      mean_by_time.loc[:,mean_by_time.mean().sort_values(ascending=False).index].plot(
          alpha=0.9, lw=.5, figsize=(20,14), colormap='Spectral')
@@ -193,20 +206,22 @@ is much higher than at night, with more spread in the summmer than in the winter
  [[file:./obipy-resources/3170jWw.png]]
  :END:
 
- #+BEGIN_SRC ipython :session :exports none :results silent
+ #+BEGIN_SRC ipython :exports none :results silent
    # Merge multi index column names to read in R
    consommation.columns = [col[0] + '_' + str(col[1]) for col in consommation.columns.values]
    # Save to access from R
    consommation.to_csv(join(data_path, "consommation.csv"))
  #+END_SRC
 
-*** Transformation
+*** DONE Transformation
+    CLOSED: [2018-06-08 Fri 11:04]
 
-**** Stationarity
+**** DONE Stationarity
+     CLOSED: [2018-06-08 Fri 11:04]
      
      The original series feature a strong seasonality as show in figure ref:fig:acf-raw.
  
- #+BEGIN_SRC R :session :exports results :results output graphics :file ./img/acf_diff7_R.png :width 900 :height 600
+ #+BEGIN_SRC R :results output graphics :file ./img/acf_diff7_R.png :width 900 :height 600
    library(tidyverse)
    library(xts)
 
@@ -219,15 +234,14 @@ is much higher than at night, with more spread in the summmer than in the winter
    }
  #+END_SRC
 
- #+RESULTS:
  #+caption: Autocorrelation function of the original data. label:fig:acf-raw
+ #+RESULTS:
  [[file:./img/acf_diff7_R.png]]
  
-To try and remove it, I have taken the weekly difference (difference between all
-the values separated by 7 days). Now there is still some correlation, but it is
-better (fig. ref:fig:acf-weekly).
+To try and remove it, the weekly difference was taken (difference between all
+the values separated by 7 days). This was able to remove most of the seasonality (fig. ref:fig:acf-weekly).
  
- #+BEGIN_SRC R :session :exports results :results output graphics :file ./img/acf_test_R.png :width 900 :height 600
+ #+BEGIN_SRC R :results output graphics :file ./img/acf_test_R.png :width 900 :height 600
    par(mfrow=c(3,4))
    par(mar=c(5.1,4.1,4.1,2.1))
    for (i in 1:12){
@@ -235,15 +249,15 @@ better (fig. ref:fig:acf-weekly).
    }
  #+END_SRC
 
+ #+caption: Autocorrelation function of the weekly differentiated series. label:fig:acf-weekly
  #+RESULTS:
- #+caption: Autocorrelation function of the weekly differenciated series. label:fig:acf-weekly
  [[file:./img/acf_test_R.png]]
 
-So as to get as close to stationarity as possible without loosing too much data, I
-have taken another difference, but this time only 1 day. Now, most of the values
+So as to get as close to stationarity as possible without loosing too much data,
+another difference was tken, but this time only 1 day. Now, most of the values
 stay within the confidence interval (fig. ref:fig:acf-final).
 
- #+BEGIN_SRC R :session :exports results :results output graphics :file ./img/acf_diff71_R.png :width 900 :height 600
+ #+BEGIN_SRC R :results output graphics :file ./img/acf_diff71_R.png :width 900 :height 600
    par(mfrow=c(3,4))
    par(mar=c(5.1,4.1,4.1,2.1))
    for (i in 1:12){
@@ -251,15 +265,15 @@ stay within the confidence interval (fig. ref:fig:acf-final).
    }
  #+END_SRC
 
+ #+caption: Autocorrelation function of the weekly differenciated series + another difference. label:fig:acf-final
  #+RESULTS:
- #+caption: Autocorrelation function of the weekly differenciated series. label:fig:acf-final
  [[file:./img/acf_diff71_R.png]]
  
 
- I have then used the Dickey-Fuller test on all the series and confirmed that
+The Dickey-Fuller test was used on all the series and confirmed that
  all the series are now significantly stationary (all p-values lower than 10e^{-21}).
 
- #+BEGIN_SRC R :session :exports none :results silent
+ #+BEGIN_SRC R :exports none :results silent
    library(fpp)
 
    consommation <- diff(diff(as.matrix(consommation),7),1)
@@ -274,7 +288,7 @@ stay within the confidence interval (fig. ref:fig:acf-final).
  #+END_SRC
 
 
- #+BEGIN_SRC ipython :session :ipyfile :exports none :results silent
+ #+BEGIN_SRC ipython :ipyfile :exports none :results silent
    from statsmodels.tsa.stattools import acf
    import pandas as pd
    import matplotlib.pyplot as plt
@@ -305,16 +319,17 @@ stay within the confidence interval (fig. ref:fig:acf-final).
  : 1.601721472225731e-22
  :END:
 
-**** Standardisation
+**** DONE Standardisation
+     CLOSED: [2018-06-08 Fri 11:04]
      
- In order to standardise the data and get a mean of 0 and standard deviation of
+ In order to standardise the data so as to get a mean of 0 and standard deviation of
  1, the z-score was applied to each individual series eqref:eq:zscore.
 
  \begin{equation}
  Z = \frac{x - \mu}{\sigma} \label{eq:zscore}
  \end{equation}
  
-#+BEGIN_SRC R :session :exports none :results output drawer
+#+BEGIN_SRC R :exports none :results output drawer
   consommation <- scale(consommation)
 
   print(mean(consommation[,1]))
@@ -323,12 +338,12 @@ stay within the confidence interval (fig. ref:fig:acf-final).
 
 #+RESULTS:
 :RESULTS:
-[1] -1.909605e-18
+[1] -2.064756e-17
 [1] 1
 :END:
  
 
-#+BEGIN_SRC ipython :session :exports none :results output drawer
+#+BEGIN_SRC ipython :exports none :results output drawer
   from scipy.stats.mstats import zscore
   consommation = consommation.apply(zscore, axis=0)
   print('Mean of z score is between', consommation.mean().min(), ' and ', consommation.mean().max())
@@ -341,28 +356,873 @@ Mean of z score is between -3.4562374114870496e-17  and  4.674623261579606e-17
 Std of z score is between 1.000280072824422  and  1.000280072824427
 :END:
      
-** GCC description
-** Distance calculation
-**** Selecting k
-**** Distance matrix
-* Results
-** Clustering
-** Cluster analysis
+
+   \pagebreak
+** TODO GCC description
+** DONE GCC calculation
+   CLOSED: [2018-06-07 Thu 11:28]
+**** DONE Selecting k
+     CLOSED: [2018-06-07 Thu 11:28]
+     
+     In order to select k, the maximum lag was taken by fitting auto-regressive
+     models to each of the series (using BIC). A maximum lag of 40 was used and was computed
+     both in R and in Python. In both case, it found a maximum fitted lag of 37. 
+    
+     - In R:
+
+
+     #+BEGIN_SRC R :exports both :results output drawer :eval no
+       library(FitAR)
+
+       getOrder <- function(ts, order.max=40) {
+         SelectModel(ts, ARModel = 'AR', Criterion = 'BIC', lag.max = order.max)[1,1]
+       }
+
+       k <- max(apply(consommation, 2, getOrder))
+       print(k)
+     #+END_SRC
+
+     #+RESULTS:
+     :RESULTS:
+     [1] 37
+     :END:
+     
+     - In Python:
+
+
+     #+BEGIN_SRC ipython :exports both :results raw drawer
+       import statsmodels.api as sm
+
+       k = consommation.apply(
+           lambda x: sm.tsa.arma_order_select_ic(
+               x, ic='bic', trend='nc', max_ar=40, max_ma=1)['bic_min_order'][0]).max()
+       k
+     #+END_SRC
+     
+     #+RESULTS:
+     :RESULTS:
+     # Out[136]:
+     : 37
+     :END:
    
- #+BEGIN_SRC R :session :exports both :results output graphics :file ./img/decompose_R.png
-   library(tidyverse)
-   library(xts)
+     This lag seems appropriate when looking at the partial autocorrelation
+     functions in figure ref:fig:pacf, as that is where the last significant
+     value is observed.
 
-   consommation <- read.csv('./data/consommation.csv', row.names='date')
+    #+BEGIN_SRC ipython :exports results :results raw graphics
+      from statsmodels.tsa.stattools import pacf
+      import numpy as np
 
-   ts1 = ts(consommation[,1], frequency = 375, start = 2013)
-   plot(decompose(ts1))
+      plt.figure()
+      ax = plt.gca()
+      all_pacf = np.array([pacf(consommation.loc[:,columns], nlags=100) for columns in consommation])
+      mean_pacf = pacf(consommation.mean(axis=1).values, nlags=100)
+      plt.axhline(1.96/np.sqrt(len(mean_pacf)), color='red')
+      plt.axhline(-1.96/np.sqrt(len(mean_pacf)), color='red')
+      for p in all_pacf:
+          plt.plot(p, alpha=0.05, color="black")
+      plt.plot(pacf(consommation.mean(axis=1), nlags=100), color='red')
+      ax.set_xlabel("Lag")
+      ax.set_ylabel("Partial Autocorrelation")
+    #+END_SRC
+
+    #+caption: Partial autocorrelation of the stationary scaled data. label:fig:pacf
+    #+RESULTS:
+    [[file:./obipy-resources/324eFu.png]]
+**** DONE Distance matrix
+     CLOSED: [2018-06-07 Thu 11:28]
+     
+The GCC was computed in both R and in Python to validate the results.
+
+- In R:
+
+#+BEGIN_SRC R :exports code
+  kMatrix <- function(ts, k) {
+    m <- ts[1 : (length(ts) - k)]
+    for (i in seq(k)) {
+      m <- cbind(m, ts[(i+1) : (length(ts) - k + i)])
+    }
+    m
+  }
+
+  GCC <- function(ts1, ts2, k) {
+    Xi <-  kMatrix(ts1, k)
+    Xj <-  kMatrix(ts2, k)
+
+    Xij <- cbind(Xi, Xj)
+
+    det(cor(Xij))^(1/(k+1)) /
+      (det(cor(Xi))^(1/(k+1)) * det(cor(Xj))^(1/(k+1)))
+  }
+  k<-37
+  combinations <- combn(dim(consommation)[2], 2)
+  DM_GCC <- matrix(0, dim(consommation)[2], dim(consommation)[2])
+  for (d in seq(dim(combinations)[2])) {
+    distance <- GCC(consommation[, combinations[,d][1]],
+                    consommation[, combinations[,d][2]], k)
+    DM_GCC[combinations[,d][1], combinations[,d][2]] <- distance
+    DM_GCC[combinations[,d][2], combinations[,d][1]] <- distance
+  }
+  rownames(DM_GCC) <- colnames(consommation)
+  colnames(DM_GCC) <- colnames(consommation)
+  write.csv(DM_GCC, file="data/DM_GCC_37_R.csv")
+#+END_SRC
+
+#+RESULTS:
+
+- In Python:
+
+#+BEGIN_SRC ipython :results silent :exports code
+  import numpy as np
+  from scipy.spatial.distance import pdist
+  from scipy.spatial.distance import squareform
+  import pickle
+
+
+  def k_matrix(ts, k):
+      T = ts.shape[0]
+      return np.array(
+          [ts[(shift):T - k + shift] for shift in np.arange(0, k + 1)])
+
+
+  def get_GCC(ts1, ts2):
+      k = 37
+      Xi = k_matrix(ts1, k)
+      Xj = k_matrix(ts2, k)
+      Xij = np.concatenate((Xi, Xj))
+      GCC = np.linalg.det(np.corrcoef(Xij)) ** (1 / (k + 1)) / (
+          np.linalg.det(np.corrcoef(Xi)) ** (1 / (k + 1)) \
+          ,* np.linalg.det(np.corrcoef(Xj)) ** (1 / (k + 1)) )
+      return GCC
+
+
+  pdist_gcc = pdist(consommation.values.T, get_GCC)
+  DM_GCC = squareform(pdist_gcc)
+  DM_GCC = pd.DataFrame(
+      DM_GCC, index=consommation.columns, columns=consommation.columns)
+  DM_GCC.to_csv('data/DM_GCC_37.csv')
+    #+END_SRC 
+    
+The maximum difference between the results of the computation in the two
+language was of \pm5.3e^{-15} and can therefore be considered equivalent.
+    
+#+BEGIN_SRC ipython :exports none
+  DM_R = pd.read_csv('./data/DM_GCC_37_R.csv', index_col=0)
+  DM_GCC = pd.read_csv('./data/DM_GCC_37.csv', index_col=0)
+  abs(DM_R.values - DM_GCC.values).max()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[76]:
+: 5.329070518200751e-15
+:END:
+
+
+\pagebreak
+* DONE Results[2/2]
+  CLOSED: [2018-06-08 Fri 11:04]
+** DONE Clustering[2/2]
+   CLOSED: [2018-06-07 Thu 13:09]
+   
+#+BEGIN_SRC R :exports none :results silent
+  DM_GCC <- read.csv(file="data/DM_GCC_37_R.csv", row.names=1)
+#+END_SRC
+
+   Hierarchical clustering was used, as it doesn't require a defined number of
+   clusters to be set, and can directly be computed with a distance matrix. 
+
+*** DONE Linkage
+    CLOSED: [2018-06-07 Thu 11:34]
+    
+    More specifically, agglomerative clustering was used, where each data points
+    starts in its own cluster and iteratively gets merged with its closest cluster.
+    There are different methods to compute that intra-cluster distance, refered to
+    as linkage method. The most popular methods were compared using the cophonetic
+    correlation, which is the correlation coefficient between the distances between
+    each point using their cluster distances and the original distance. A value
+    closer to 1 means that the defined clusters respect better the original
+    distances. 
+    
+    As such, both R and Python, the most conservative method was the
+    average linkage and was therefore used to create the dendrogram (table
+    ref:tab:cophonetic). Different results were obtained for the 'centroid' and
+    'median' method, but still didn't beat the 0.77 of cophonetic correlation of
+    the 'average' linkage.
+    
+    #+BEGIN_SRC ipython :exports none :results raw drawer
+      import scipy.cluster.hierarchy as hcl
+      from scipy.spatial.distance import pdist
+
+      linkage_gcc = hcl.single(squareform(DM_GCC))
+      single = hcl.cophenet(linkage_gcc, pdist_gcc)[0]
+      linkage_gcc = hcl.average(squareform(DM_GCC))
+      average = hcl.cophenet(linkage_gcc, pdist_gcc)[0]
+      linkage_gcc = hcl.centroid(squareform(DM_GCC))
+      centroid = hcl.cophenet(linkage_gcc, pdist_gcc)[0]
+      linkage_gcc = hcl.weighted(squareform(DM_GCC))
+      weighted = hcl.cophenet(linkage_gcc, pdist_gcc)[0]
+      linkage_gcc = hcl.median(squareform(DM_GCC))
+      median = hcl.cophenet(linkage_gcc, pdist_gcc)[0]
+      linkage_gcc = hcl.complete(squareform(DM_GCC))
+      complete = hcl.cophenet(linkage_gcc, pdist_gcc)[0]
+      linkage_gcc = hcl.ward(squareform(DM_GCC))
+      ward = hcl.cophenet(linkage_gcc, pdist_gcc)[0]
+
+      pd.DataFrame({
+          'Single': single,
+          'Average': average,
+          'Centroid': centroid,
+          'Weighted': weighted,
+          'Median': median,
+          'Complete': complete,
+          'Ward': ward
+      }, index=['Python'])
+
+    #+END_SRC 
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[1258]:
+    #+BEGIN_EXAMPLE
+      Average  Centroid  Complete    Median    Single      Ward  Weighted
+      Python  0.775384  0.732748  0.693934  0.697206  0.691684  0.663364   0.74322
+    #+END_EXAMPLE
+    :END:
+    
+    #+BEGIN_SRC R :exports none :results output drawer
+      cor(as.dist(DM_GCC),cophenetic(hclust(as.dist(DM_GCC), method = 'average')))
+      cor(as.dist(DM_GCC),cophenetic(hclust(as.dist(DM_GCC), method = 'centroid')))
+      cor(as.dist(DM_GCC),cophenetic(hclust(as.dist(DM_GCC), method = 'single')))
+      cor(as.dist(DM_GCC),cophenetic(hclust(as.dist(DM_GCC), method = 'median')))
+      cor(as.dist(DM_GCC),cophenetic(hclust(as.dist(DM_GCC), method = 'ward.D2')))
+      cor(as.dist(DM_GCC),cophenetic(hclust(as.dist(DM_GCC), method = 'complete')))
+      cor(as.dist(DM_GCC),cophenetic(hclust(as.dist(DM_GCC), method = 'mcquitty')))
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    [1] 0.7753839
+    [1] 0.5551742
+    [1] 0.6916843
+    [1] 0.2873143
+    [1] 0.6633638
+    [1] 0.6939336
+    [1] 0.7432199
+    :END:
+     
+#+caption: Cophonetic correlation of linkage methods. label:tab:cophonetic
+|        | Average | Centroid | Complete | Median | Single | Ward | Weighted |
+| Python |    0.77 |     0.73 |     0.69 |   0.70 |   0.69 | 0.66 |     0.74 |
+| R      |    0.77 |     0.55 |     0.69 |   0.29 |   0.69 | 0.66 |     0.74 |
+
+     
+    In ref:fig:heatmap we can clearly see that there is a lot of structure.
+    There are distances across the whole range of the GCC, making it easier to
+    distinguish the groups. In fact, the regions appear the be the main
+    influencing factor.
+
+    #+BEGIN_SRC ipython :ipyfile :results raw drawer
+      import seaborn as sns
+      linkage = hcl.linkage(squareform(DM_GCC), method='average')
+      sns.clustermap(DM_GCC, row_linkage=linkage, col_linkage=linkage)
+      plt.show()
+    #+END_SRC
+
+    #+RESULTS:
+    :RESULTS:
+    # Out[1146]:
+    #+caption: Heatmap of the distance matrix rearranged using the average linkage hierarchical clustering. label:fig:heatmap
+    [[file:./obipy-resources/324NaF.png]]
+    :END:
+    
+    \pagebreak
+*** DONE Cluster number
+    CLOSED: [2018-06-07 Thu 13:08]
+    
+    Determining the number of cluster can be very challenging. The /factoextra/
+    package in R provides functions to intent finding that number
+    automatically. However, as you can see in figure ref:fig:nbclusters_r, it isn't always that obvious.
+
+    The larger silhouette width is observed at 2 clusters but there is a small
+    peak at 5 clusters. We can also see that the more clusters the better the
+    gap statistic. However, we can see a small peak at k=5. Looking at the sum
+    of square distance, we can also notice a small "elbow" at k=5.
+   
+    #+caption: Mean silhouette width, gap statistic and total within cluster sum of square distance for each number of cluster. label:fig:nbclusters_r
+    [[file:img/nbclusters_r.png]]
+    
+    # #+BEGIN_SRC R :file ./img/silhouette_nb.png :results output graphics 
+    #       # http://www.sthda.com/english/articles/29-cluster-validation-essentials/96-determining-the-optimal-number-of-clusters-3-must-know-methods/
+    #   library(factoextra)
+    #   fviz_nbclust(DM_GCC, hcut, method = "silhouette", k.max=30)
+    # #+END_SRC
+
+    # #+caption: Mean silhouette width for each number of cluster. label:fig:silhouette
+    # #+RESULTS:
+    # [[file:./img/silhouette_nb.png]]
+    
+    
+    # In fig. ref:fig:gap, we can see that the more clusters the better the gap
+    # statistic. However, we can see a small peak at k=5.
+    
+    # #+BEGIN_SRC R :file ./img/gap_nb_30.png :results output graphics
+    # fviz_nbclust(DM_GCC, hcut, method = "gap_stat", k.max=30, nboot=3)
+    # #+END_SRC
+
+    # #+caption: Gap statistic for each number of cluster. label:fig:gap
+    # #+RESULTS:
+    # [[file:./img/gap_nb_30.png]]
+    
+# In figure ref:fig:wss, we can also notice a small "elbow" at k=5.
+
+    
+    # #+BEGIN_SRC R :file ./img/wss_nb.png :results output graphics
+    # fviz_nbclust(DM_GCC, hcut, method = "wss", k.max=30)
+    # #+END_SRC
+
+    # #+caption: Total within cluster sum of square distance for each number of cluster. label:fig:wss
+    # #+RESULTS:
+    # [[file:./img/wss_nb.png]]
+    
+
+    This all suggest that there might be 5 clusters in our dataset, as shown on the
+    dendrogram (fig. ref:fig:dendrogram). Another way to look at those clusters is
+    by looking the first 2 principal components of the distance matrix (fig. ref:fig:pca_cluster).
+  
+    #+BEGIN_SRC R :results output graphics :file ./img/dendrogram_R.png
+      res <- hcut(as.dist(DM_GCC), k = 5, isdiss=TRUE)
+      fviz_dend(res, rect = TRUE)
+    #+END_SRC
+
+    #+caption: Dendrogram of the distance matrix using average linkage. label:fig:dendrogram
+    #+RESULTS:
+    [[file:./img/dendrogram_R.png]]
+
+
+    #+BEGIN_SRC R :results output graphics :file ./img/region_clusters_R.png
+      hc <- hclust(as.dist(DM_GCC), method = 'average')
+      groups <- cutree(hc, k=5)
+      fviz_cluster(list(data=DM_GCC, cluster=groups), geom='point')
+    #+END_SRC
+
+    #+caption: 5 clusters over the 2 principal components of the distance matrix. label:fig:pca_cluster
+    #+RESULTS:
+    [[file:./img/region_clusters_R.png]]
+
+    In fig. ref:fig:silhouette_width, we can see the silhouette width of each of the
+    samples in their respective cluster. There seems to be some misclassification
+    for some samples in cluster 3, but overall each cluster has significantly high
+    silhouette width.
+
+    #+BEGIN_SRC R :results output graphics :file ./img/sil_clusters_R.png
+      require("cluster")
+      sil <- silhouette(groups, DM_GCC)
+      fviz_silhouette(sil)
+    #+END_SRC
+
+    #+caption: Silhouette width of the samples in each cluster. label:fig:silhouette_width
+    #+RESULTS:
+    [[file:./img/sil_clusters_R.png]]
+
+
+
+    
+    \pagebreak
+** DONE Cluster analysis[3/3]
+   CLOSED: [2018-06-08 Fri 11:03]
+   
+*** DONE Mapping the clusters
+    CLOSED: [2018-06-07 Thu 15:49]
+
+    If we were to only use 2 clusters, the PACA region is clearly the most
+    distinct of all the regions (ref:fig:2clusters_map).
+
+  #+BEGIN_SRC python :session :results silent
+    import pygal
+    from itertools import chain
+    import pandas as pd
+    import scipy.cluster.hierarchy as hcl
+    from scipy.spatial.distance import squareform
+    import numpy as np
+
+    DM_GCC = pd.read_csv('data/DM_GCC_37.csv', index_col=0)
+    consommation = pd.read_csv('data/consommation.csv',index_col=0)
+
+    n_clusters = 5
+    linkage = hcl.linkage(squareform(DM_GCC), method='average')
+    clusters = hcl.fcluster(linkage, t=n_clusters, criterion="maxclust")
+
+    regions = [string.split('_')[0] for string in consommation.columns]
+    times = [string.split('_')[1] for string in consommation.columns]
+    consommation_clusters = pd.DataFrame(np.transpose([regions,
+                                                    times,
+                                                    list(clusters)]), columns=["Region", "Time", "Cluster"])
+
+    region_cluster = consommation_clusters.groupby(by="Region")["Cluster"].value_counts().index.to_frame()
+    region_cluster.index = region_cluster["Region"].values
+
+    region_codes = pd.read_csv("./data/frenchRegions.csv")
+
+    region_cluster["Region"].isin(region_codes["Region"])
+    region_cluster["region_match"] = region_cluster["Region"]
+
+    region_codes = {}
+    region_codes["Auvergne-Rhône-Alpes"] = [83, 82]
+    region_codes["Bourgogne-Franche-Comté"] = [26, 43]
+    region_codes["Bretagne"] = [53]
+    region_codes["Centre-Val de Loire"] = [24]
+    region_codes["Grand-Est"] = [42, 21, 41]
+    region_codes["Hauts-de-France"] = [31, 22]
+    region_codes["Ile-de-France"] = [11]
+    region_codes["Normandie"] = [23, 25]
+    region_codes["Nouvelle-Aquitaine"] = [72, 54, 74]
+    region_codes["Occitanie"] = [91, 73]
+    region_codes["PACA"] = [93]
+    region_codes["Pays-de-la-Loire"] = [52]
+
+    fr_chart = pygal.maps.fr.Regions()
+    fr_chart.title = 'Regions clusters'
+    for cluster in np.unique(region_cluster["Cluster"]):
+        fr_chart.add("Cluster " + str(cluster), 
+                    list(chain.from_iterable([region_codes[region] 
+                                            for region in region_cluster.loc[
+                                                region_cluster["Cluster"]==cluster, "Region"].values])))
+    fr_chart.render_to_file("./img/5_regions_clusters.svg")
+  #+END_SRC
+  
+  #+caption: Map of the 2 clusters on the map of France. The regions shown are the old more numberous regions, but the boundaries of the 12 new reiongs are the same. label:fig:2clusters_map
+  [[file:./img/2clusters_map.png]]
+  
+  However, in order to have a deeper understanding of the composition of France,
+  5 clusters was the other clear delimitation. It is very clear here, that all
+  the clusters have a strong geographical meaning. All regions are in different
+  clusters apart from cluster 4 and 5 that are mixed geographically (table
+  ref:tab:regions_clusters and fig. ref:fig:5clusters_map), which are more
+  defined by their consumption over time.
+  
+#+caption: Regions in each clusters. label:tab:regions_clusters
+|    1 | 2         | 3     | 4         | 5         |
+|------+-----------+-------+-----------+-----------|
+| PACA | N-A       | A-R-A | Bretagne  | Bretagne  |
+|      | Occitanie | B-F-C | C-V-L     | C-V-L     |
+|      |           | G-E   | I-F       | I-F       |
+|      |           |       | Normandie | Normandie |
+|      |           |       | P-L       | P-L       |
+|      |           |       |           | H-F       |
+  
+#+BEGIN_SRC ipython :exports none
+clustered_regions
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[105]:
+#+BEGIN_EXAMPLE
+  {1: {'PACA'},
+  2: {'Nouvelle-Aquitaine', 'Occitanie'},
+  3: {'Auvergne-Rhône-Alpes', 'Bourgogne-Franche-Comté', 'Grand-Est'},
+  4: {'Bretagne',
+  'Centre-Val de Loire',
+  'Ile-de-France',
+  'Normandie',
+  'Pays-de-la-Loire'},
+  5: {'Bretagne',
+  'Centre-Val de Loire',
+  'Hauts-de-France',
+  'Ile-de-France',
+  'Normandie',
+  'Pays-de-la-Loire'}}
+#+END_EXAMPLE
+:END:
+  
+
+  #+caption: Map of the 5 clusters on the map of France. The regions shown are the old more numberous regions, but the boundaries of the 12 new reiongs are the same. label:fig:5clusters_map
+  [[file:./img/5clusters_map.png]]
+   
+\pagebreak
+\pagebreak
+*** DONE Within clusters structure
+    CLOSED: [2018-06-08 Fri 11:03]
+
+    In this section, the goal was to find out if there was more structure within
+    each of the clusters. A dendrogram was plotted for each cluster and the
+    label was coloured depending on the time of the day, where black is late in
+    the day and red is early morning. The lighter colours are towards midday.     
+
+    Cluster 1 only contains the PACA region. In figure ref:fig:cluster1, we can
+    see that there are 3 main clusters, mornings from 6:30 to 11:00,
+    midday-afternoon from 11:30 to 20:00, and the night cluster from 20:00 to
+    6:00. Days (11:30 to 20:00) and nights (20:30 to 11:00) are however the most
+    well defined.
+    
+ #+BEGIN_SRC ipython :ipyfile 
+   sub_DM_GCC = DM_GCC.loc[clusters==3, clusters==3]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='average')
+
+   fig = plt.figure(figsize=(10,12), dpi=96)
+   fig.add_subplot(2,1,1)
+   labels = [l.split('_')[0] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   fig.add_subplot(2,1,2)
+   labels = [l.split('_')[1] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
  #+END_SRC
 
  #+RESULTS:
- [[file:./img/decompose_R.png]]
+ :RESULTS:
+ # Out[148]:
+ #+caption: Dendrogram of cluster 1. Black is late in the day and red is early morning. The lighter colours are towards midday. label:fig:cluster1
+ [[file:./obipy-resources/zVR6Ci.png]]
+ :END:
 
-* Conclusion
+    Cluster 2 contains 2 regions (Nouvelle-Aquitaine and Occitanie). In figure
+    ref:fig:cluster2, in the top plot the label was coloured by the region and
+    the bottom plot the label was coloured by the time of the day. We can see
+    that the most important must important clustering is by region, but then
+    similar clustering, by time of the day, as cluster 1 is observed.
+ 
+ #+BEGIN_SRC ipython :ipyfile 
+   sub_DM_GCC = DM_GCC.loc[clusters==2, clusters==2]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='average')
+
+   fig = plt.figure(figsize=(10,12), dpi=96)
+   fig.add_subplot(2,1,1)
+   labels = [l.split('_')[0] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   fig.add_subplot(2,1,2)
+   labels = [l.split('_')[1] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[160]:
+ #+caption: Dendrogram of cluster 2. Top: Black is Occitanie and red is Nouvelle-Aquitaine. Bottom: Black is late in the day and red is early morning. The lighter colours are towards midday. label:fig:cluster2
+ [[file:./obipy-resources/hzZQBk.png]]
+ :END:
+ 
+ In cluster 3, containing 3 regions (Auvergne-Rhône-Alpes,
+ Bourgogne-Franche-Comté and Grand-Est) things are very different. The time of
+ the day is the most important variable, as apart from Grand-Est, there are 2
+ main clusters, the late-night and early-morning cluster and the rest of the day
+ (fig. ref:fig:cluster3).
+
+ #+BEGIN_SRC ipython :ipyfile 
+   sub_DM_GCC = DM_GCC.loc[clusters==3, clusters==3]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='average')
+
+   fig = plt.figure(figsize=(10,12), dpi=96)
+   fig.add_subplot(2,1,1)
+   labels = [l.split('_')[0] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   fig.add_subplot(2,1,2)
+   labels = [l.split('_')[1] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[158]:
+ #+caption: Dendrogram of cluster 3. Black is late in the day and red is early morning. The lighter colours are towards midday. label:fig:cluster3
+ [[file:./obipy-resources/gnUCQq.png]]
+ :END:
+ 
+ Cluster 4 contains 4 regions (Bretagne, Centre-Val de Loire, Ile-de-France,
+ Normandie and Pays-de-la-Loire), but only late night and early morning times .
+ Here the regional clusters are very clear as all regions have been split with
+ no clear time cluster (ref:fig:cluster4).
+ 
+
+ #+BEGIN_SRC ipython :ipyfile 
+   sub_DM_GCC = DM_GCC.loc[clusters==4, clusters==4]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='average')
+
+   fig = plt.figure(figsize=(10,12), dpi=96)
+   fig.add_subplot(2,1,1)
+   labels = [l.split('_')[0] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   fig.add_subplot(2,1,2)
+   labels = [l.split('_')[1] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[161]:
+  #+caption: Dendrogram of cluster 4. Black is late in the day and red is early morning. The lighter colours are towards midday. label:fig:cluster4
+ [[file:./obipy-resources/p2eal0.png]]
+ :END:
+
+In cluster 5, there are 5 regions, the same ones as in cluster 4 as well as
+Hauts-de-France. At all times, the Hauts-de-France was grouped with the evenings
+of the Centre-Val-de-Loire, Normandie and Iles-de-France, whereas the other
+regions are clustered into mornings and evenings.
+ 
+ #+BEGIN_SRC ipython :ipyfile 
+   sub_DM_GCC = DM_GCC.loc[clusters==5, clusters==5]
+   sub_linkage = hcl.linkage(squareform(sub_DM_GCC), method='average')
+
+   fig = plt.figure(figsize=(10,12), dpi=96)
+   fig.add_subplot(2,1,1)
+   labels = [l.split('_')[0] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   fig.add_subplot(2,1,2)
+   labels = [l.split('_')[1] for l in sub_DM_GCC.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(sub_linkage,
+               labels = labels)
+   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[162]:
+ #+caption: Dendrogram of cluster 5. Black is late in the day and red is early morning. The lighter colours are towards midday. label:fig:cluster5
+ [[file:./obipy-resources/hLlJ8y.png]]
+ :END:
+
+
+ \pagebreak
+*** DONE Clusters trends
+    CLOSED: [2018-06-08 Fri 11:03]
+    
+As no information about the size of the population in each region was used, the
+absolute consumption were not compared between clusters. However, we can still
+compare relative changes over the years (fig. ref:fig:cluster-trend1y), seasons
+(fig. ref:fig:cluster-trend3m) and a typical day (fig. ref:fig:cluster-day).
+
+The 1 year trends of each cluster seem to suggest that the regions that had
+lower consumptions in 2013-2014 have increased their consumptions in 2016-2017,
+and inversely for regions that had it higher in the 2013-2014 period (fig.
+ref:fig:cluster-trend1y). The PACA region (cluster 1) is also clearly
+differenciated from the other ones. However, it is difficult to get clear
+conclusions as there are not enough data to analyse long term trends.
+  
+  #+BEGIN_SRC ipython :ipyfile
+        from scipy.stats.mstats import zscore
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        import scipy.cluster.hierarchy as hcl
+        from scipy.spatial.distance import squareform
+        from os.path import join
+        %matplotlib inline
+
+        consommation = pd.read_csv(join('data', 'consommation.csv'), index_col=0)
+        consommation.index = pd.to_datetime(consommation.index, format="%Y-%m-%d")
+        consommation = consommation.apply(zscore, axis=0)
+        linkage = hcl.linkage(squareform(DM_GCC), method='average')
+        clusters = hcl.fcluster(linkage, t=5, criterion="maxclust")
+        #consommation = consommation.diff(365).iloc[365:,:]
+        consommation.groupby(clusters, axis=1).mean().rolling(365,center=False).mean().plot(
+            figsize=(10,5))
+        plt.show()
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[181]:
+  #+caption: 1 year moving average trend of each cluster. label:fig:cluster-trend1y
+  [[file:./obipy-resources/Pgkkwy.png]]
+  :END:
+  
+In the 3 months trend (fig. ref:fig:cluster-trend3m), we can see that cluster 1
+and 2 have a higher energy consumption during the summer. This is most likely
+due to the use of air conditioning, as those 2 clusters are in the south of
+France, which is not really common (nor necessary) in the north. 
+
+  #+BEGIN_SRC ipython :ipyfile
+    from scipy.stats.mstats import zscore
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import scipy.cluster.hierarchy as hcl
+    from scipy.spatial.distance import squareform
+    from os.path import join
+    %matplotlib inline
+
+    consommation = pd.read_csv(join('data', 'consommation.csv'), index_col=0)
+    consommation.index = pd.to_datetime(consommation.index, format="%Y-%m-%d")
+    consommation = consommation.apply(zscore, axis=0)
+    linkage = hcl.linkage(squareform(DM_GCC), method='average')
+    clusters = hcl.fcluster(linkage, t=5, criterion="maxclust")
+    consommation.groupby(clusters, axis=1).mean().rolling(30*3,center=False).mean().plot(
+        figsize=(10,5))
+    plt.show()
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[172]:
+  #+caption: 3 months moving average trend of each cluster. label:fig:cluster-trend3m
+  [[file:./obipy-resources/I1aLtt.png]]
+  :END:
+  
+Over the day (fig. ref:fig:cluster-day), cluster 1, and to a smaller extend
+cluster 2, tend to use electricity later than the other regions. Again, this is
+most likely due to the different life style between the north and south regions
+of France. As it is very warm during the days, people tend to go out more in the
+evenings, as shown by the higher consumption around 20:00.
+  
+#+BEGIN_SRC ipython :ipyfile :exports results
+    from scipy.stats.mstats import zscore
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import scipy.cluster.hierarchy as hcl
+    from scipy.spatial.distance import squareform
+    from os.path import join
+    import glob
+    import numpy as np
+    %matplotlib inline
+
+    data_path = "data"
+
+    # Combine all the .xls interruptof each region
+    data = pd.concat([
+        pd.read_table(
+            file, encoding="cp1252", delimiter="\t", engine="python",
+            index_col=False).iloc[:-1, :]
+        for file in glob.glob(join(data_path, "*.xls"))
+    ])
+
+    # Format type of variables
+    data["Consommation"] = pd.to_numeric(data["Consommation"], errors='coerce')
+    data["Datetime"] = pd.to_datetime(
+        (data["Date"] + '_' + data["Heures"]).apply(str), format='%Y-%m-%d_%H:%M')
+
+    # Correct regions names
+    data.loc[data['Périmètre'] == 'Auvergne et Rhône-Alpes', 'Périmètre'] = 'Auvergne-Rhône-Alpes'
+    data.loc[data['Périmètre'] == 'Bourgogne et Franche Comté', 'Périmètre'] = 'Bourgogne-Franche-Comté'
+    data.loc[data['Périmètre'] == 'Alsace, Champagne-Ardenne et Lorraine', 'Périmètre'] = 'Grand-Est'
+    data.loc[data['Périmètre'] == 'Nord-Pas-de-Calais et Picardie', 'Périmètre'] = 'Hauts-de-France'
+    data.loc[data['Périmètre'] == 'Aquitaine, Limousin et Poitou-Charentes', 'Périmètre'] = 'Nouvelle-Aquitaine'
+    data.loc[data['Périmètre'] == 'Languedoc-Roussillon et Midi-Pyrénées', 'Périmètre'] = 'Occitanie'
+
+    # Reshape to row = datetime and column = region, all values are consumption
+    consommation = pd.pivot_table(
+        data, values='Consommation', index='Datetime', columns=['Périmètre'])
+    # Set timezone as it creates problem when changing between daylight saving times.
+    consommation = consommation.tz_localize('UTC', ambiguous=False)
+    consommation = consommation.resample('30T').sum()
+
+    DM_GCC = pd.read_csv(join('data', 'DM_GCC_37.csv'), index_col=0)
+    daily = pd.read_csv(join('data', 'consommation.csv'), index_col=0)
+    daily.index = pd.to_datetime(daily.index, format="%Y-%m-%d")
+    consommation = consommation.apply(zscore, axis=0)
+    linkage = hcl.linkage(squareform(DM_GCC), method='average')
+    clusters = hcl.fcluster(linkage, t=5, criterion="maxclust")
+    regions = [series.split('_')[0] for series in daily.columns]
+    clustered_regions = {n:set([regions[i] for i in np.where(clusters==n)[0]]) for n in set(clusters)}
+    hourly = pd.DataFrame([consommation[list(regions)].groupby([consommation.index.hour]).mean().mean(axis=1)
+                  for cluster, regions in clustered_regions.items()], index=np.arange(1,6)).T
+    hourly.plot(figsize=(10,5))
+    plt.xlabel('Time')
+    plt.ylabel('Relative consumption')
+    plt.show()
+
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[169]:
+  #+caption: Hourly mean consumption of everyday for each cluster. label:fig:cluster-day
+  [[file:./obipy-resources/zcbyX7.png]]
+  :END:
+
+  \pagebreak
+* TODO Conclusion
 
 
 bibliographystyle:apalike
