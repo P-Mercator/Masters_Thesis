@@ -3,8 +3,13 @@
 #+PROPERTY: header-args:ipython :session kernel-459f87ab-a358-4580-b7be-967010698ff2.json
 #+PROPERTY: header-args:ipython+ :results raw drawer
 
-#+OPTIONS: toc:nil ^:{}
-#+EXPORT_EXCLUDE_TAGS: noexport
+#+OPTIONS: toc:nil 
+# #+OPTIONS: ^:{} 
+# #+OPTIONS: tags:nil 
+#+OPTIONS: taks:todo
+# #+OPTIONS: 
+# #+OPTIONS: 
+# #+EXPORT_EXCLUDE_TAGS: noexport
 
 #+latex_header: \input{./latex/plantilla_memoria_tfm.tex}
 #+Bibliography: ~/ref.bib
@@ -12,7 +17,8 @@
 
 
 \pagebreak
-* TODO Introduction[2/2]
+* DONE Introduction[2/2]
+  CLOSED: [2018-06-09 Sat 13:43]
 ** DONE Clustering time series
    CLOSED: [2018-06-08 Fri 21:54]
      
@@ -87,23 +93,30 @@
    The clustering of electricity consumption series is crucial for the detection
    of patterns and trends, and to predict the future consumption of a
    population. cite:van1999cluster was one of the first to do this using the
-   consumption in the Netherlands. Hist approach was to use agglomerative
+   consumption in the Netherlands. His approach was to use agglomerative
    hierarchical clustering on daily power consumption based on the root mean
    square distance.
    
    In this thesis, I would like to show an application of the Generalised Cross
-   Correlation defined by cite:gcc2017. It is a similarity metric based on cross correlation
-   that can cluster using the linear dependency between the series. As such, it
-   is very general and non parametric. 
+   Correlation defined by cite:gcc2017. It is a similarity metric based on cross
+   correlation that can cluster using the linear dependency between the series.
+   As such, it is very general and non parametric. Previous time series
+   clustering methods have been using similarities among series based on their
+   univariate models in a parametric framework, by its periodogram or their
+   autocorrelation. However, as demonstrated by cite:gcc2017, clustering by
+   their cross dependency can produce significantly different results compared
+   to those other methods.
    
-   The goal of this study is to use implement that metric in R and in Python
-   (for comparison) to show it efficacy in finding clusters of electricity
-   consumption in France, both across its regions and over time. The clusters
-   will then be analysed to find further structure and identify their trends and
-   patterns.
+   The goal of this study is to implement that metric in R and in Python (for
+   comparison) and show its efficacy in finding clusters of electricity
+   consumption in France that make sense. A simple agglomerative hierarchical
+   clustering was used as it does not require any assumption on the number of
+   clusters. The clusters will then be analysed to find further structure and
+   identify their trends and patterns.
 
    \pagebreak
-* TODO Methodology[3/4]
+* DONE Methodology[4/4]
+  CLOSED: [2018-06-09 Sat 13:44]
 ** DONE Data description
    CLOSED: [2018-05-28 Mon 22:44]
    The electricity consumption was available at a 30 minutes frequency for each of
@@ -422,7 +435,70 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
      
 
    \pagebreak
-** TODO GCC description
+** DONE GCC description
+   CLOSED: [2018-06-09 Sat 13:43]
+   
+   As described before, the GCC is a very general non parametric similarity metric (as it does not
+   assume any parametric model for the series), that look at the dependencies
+   between series using their cross correlation. The main idea is that it is
+   possible to first cluster the series by the dependency among the series,
+   without any assumption made on those. Then it is possible to break down those
+   more homogeneous clusters looking at the internal dependency of those series.
+
+   The main idea behind the GCC computation is a metric based on the determinant
+   of the cross correlation matrices from lag zero to lag k. To do this, for
+   each lag k, it is necessary to construct the $X(i)$ and $X(j)$ matrices from
+   the $i$ and $j$ series of size N as follow:
+
+   \begin{equation}
+   X(i) = 
+   \begin{pmatrix}
+     X_{i,1}   & X_{i,2}     & \ldots & X_{i,k+1}\\
+     X_{i,2}   & X_{i,3}     & \ldots & X_{i,k+2}\\
+     \vdots    & \vdots      & \ddots & \vdots   \\
+     X_{i,T-k} & X_{i,T-k+1} & \ldots & X_{i,T}  \\
+   \end{pmatrix}
+   \end{equation}
+
+   With both $X(i)$ and $X(j)$ constructed, we can merge them to form 
+
+   \begin{equation}
+   X(i,j) = (X(i),X(j))
+   \end{equation}
+
+   The GCC is can then be computed as:
+
+   \begin{equation}
+   \widehat{GCC}(X_i,X_i) = 1 - \frac{|\widehat{R}_{X(i,j)}|^{k+1}}{|\widehat{R}_{X(i)}|^{k+1}|\widehat{R}_{X(j)}|^{k+1}} \label{eq:GCC}
+   \end{equation}
+
+   where $\widehat{R}$ is the sample correlation matrix of each matrix. This gives
+   a similarity value between 0 and 1 where 1 is the highest degree of similarity
+   possible and 0 with absolutely no cross dependency between the series. 
+
+   For clustering it is then necessary to build a distance matrix as such:
+
+   \begin{equation}
+   DM_{\widehat{GCC}} = 
+   \begin{pmatrix}
+     0                          & 1-\widehat{GCC}(X_1,X_2) & \ldots & 1-\widehat{GCC}(X_1,X_N)\\
+     1-\widehat{GCC}(X_2,X_1)   & 0                        & \ldots & 1-\widehat{GCC}(X_2,X_N)\\
+     \vdots                     & \vdots                   & \ddots & \vdots                  \\
+     1-\widehat{GCC}(X_N,X_1)   & 1-\widehat{GCC}(X_N,X_2) & \ldots & 0                       \\
+   \end{pmatrix}
+   \end{equation}
+
+   It is necessary to do $1-\widehat{GCC}(X_i,X_j)$ if the original measure was
+   calculated as in equation ref:eq:GCC, which is a similarity metric, and what is
+   needed here is a distance where 0 means close and 1 means far apart.
+   
+   There are 2 ways for selecting the number of lag k. Either by taking the
+   maximum order p of all series fitted an auto-regressive model with BIC as the
+   model selection criterion, or using a Dynamic Factor Model which will give
+   more information about the relevant number of lags for the cross
+   correlations, as described in cite:gcc2017.
+
+   
 ** DONE GCC calculation
    CLOSED: [2018-06-07 Thu 11:28]
 **** DONE Selecting k
@@ -430,7 +506,9 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
      
      In order to select k, the maximum lag was taken by fitting auto-regressive
      models to each of the series (using BIC). A maximum lag of 40 was used and was computed
-     both in R and in Python. In both case, it found a maximum fitted lag of 37. 
+     both in R and in Python. In both case, it found a maximum fitted lag of 37.
+     This k was considered sufficiently large to capture the cross dependencies
+     between the series and was therefore used.
     
      - In R:
 
