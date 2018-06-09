@@ -4,9 +4,8 @@
 #+PROPERTY: header-args:ipython+ :results raw drawer
 
 #+OPTIONS: toc:nil 
-# #+OPTIONS: ^:{} 
+#+OPTIONS: ^:{} 
 # #+OPTIONS: tags:nil 
-#+OPTIONS: taks:todo
 # #+OPTIONS: 
 # #+OPTIONS: 
 # #+EXPORT_EXCLUDE_TAGS: noexport
@@ -15,20 +14,17 @@
 #+Bibliography: ~/ref.bib
 
 
-
 \pagebreak
-* DONE Introduction[2/2]
-  CLOSED: [2018-06-09 Sat 13:43]
-** DONE Clustering time series
-   CLOSED: [2018-06-08 Fri 21:54]
+* Introduction
+
+** Clustering time series
      
      Clustering is a unsupervised machine learning task that tries to assign
-     labels to data. It is unsupervised as we generally do not know those
-     labels. The general goal is to minimise the within group similarities and
-     maximise between groups dissimilarities.
+     labels to data. It does this by minimising the within group similarities
+     and maximising the between groups dissimilarities. It is unsupervised as we
+     generally do not know those labels.
    
-*** DONE Static data clustering
-    CLOSED: [2018-06-08 Fri 21:53]
+*** Static data clustering
 
    As defined by cite:han2000data, clustering can be generalised into multiple
    kinds of methods: partitioning, hierarchical, density-based, grid-based and
@@ -59,21 +55,22 @@
    networks (see cite:carpenter1987massively,kohonen1998self).
 
                
-*** DONE Dynamic Data or Time series clustering
-    CLOSED: [2018-06-08 Fri 21:53]
+*** Dynamic Data or Time series clustering
     
-    Time series are usually large datasets that have inherited a high
-    dimensionality over time of dependent measurements. Interestingly, it is possible
+    Time series are usually large datasets that have inherited, over time, of a high
+    dimensionality of dependent measurements. Interestingly, it is possible
     to look at a series either as a high dimensional vector or as a single data
     point. As shown by cite:liao2005clustering and cite:aghabozorgi2015time, the
-    interest for time series clustering is growing in a wide variety of fields.
+    interest for time series clustering has been growing in a wide variety of fields.
     It is often an important step of an exploratory analysis.
     
     As defined by cite:liao2005clustering in his review (see fig.
     ref:fig:types_clusterTS), there are 3 types of time series clustering.
     Raw-data based methods compare series directly and will usually compute a
     distance or similarity metric. Then, there are feature based and model based
-    data that summarise each series into a set of parameters.
+    data that summarise each series into a set of parameters. The problem with
+    those is that it often can oversimplify the series, and although faster to
+    compute, requires many assumptions about each series to be made.
     
     cite:aghabozorgi2015time has identified the 4 main aspects of time series
     clustering research: the *dimensionality reduction* necessary to remove noise
@@ -81,14 +78,13 @@
     *clustering algorithms* and cluster *prototypes* (or how to characterise a group
     of data).
 
-   #+caption: Three time series clustering approaches: (a) raw-data-based, (b) feature-based, (c) model-based. cite:liao2005clustering label:fig:types_clusterTS
+   #+caption: Three time series clustering approaches: (a) raw-data-based, (b) feature-based, (c) model-based. citep:liao2005clustering label:fig:types_clusterTS
    [[file:img/types_clusterTS.png]]
    
    Essentially, once the distance matrix or parameters of the time series
    extracted, most of the static data clustering methods can be used as is.
      
-** DONE Cluster electricity consumption using GCC
-   CLOSED: [2018-06-08 Fri 22:39]
+** Cluster electricity consumption using GCC
    
    The clustering of electricity consumption series is crucial for the detection
    of patterns and trends, and to predict the future consumption of a
@@ -115,10 +111,8 @@
    identify their trends and patterns.
 
    \pagebreak
-* DONE Methodology[4/4]
-  CLOSED: [2018-06-09 Sat 13:44]
-** DONE Data description
-   CLOSED: [2018-05-28 Mon 22:44]
+* Methodology
+** Data description
    The electricity consumption was available at a 30 minutes frequency for each of
    the 12 regions of France from 2013 to 2017. Each year of each region can be
    downloaded from the French transmission operator (Rte) download portal[fn:1].
@@ -126,8 +120,8 @@
    Consumption from January 2013 to September of 2017 were downloaded for each of
    the 12 metropolitan mainland regions of France (excluding Corsica). 
 
-   However, those regions are still very young, as before 2016, those were 21
-   separate regions. Regions in France lack separate legislative power, but can
+   Those regions are still very young, as before 2016, those were 21
+   separate regions. In France, regions lack separate legislative power, but can
    manage a considerable part of their budget for main infrastructures such as
    education, public transport, universities and research, and help to businesses.
    It is therefore expected to find some interesting clusters, where we might see
@@ -135,13 +129,11 @@
 
 [fn:1] http://www.rte-france.com/en/eco2mix/eco2mix-telechargement-en
 
-** DONE Data preparation
-   CLOSED: [2018-05-28 Mon 22:44]
-*** DONE Cleaning
-    CLOSED: [2018-06-08 Fri 11:04]
+** Data preparation
+*** Cleaning
 
-    The complete data set was spread across 60 different tables (years and regions) that were
-    merged into one large table (table ref:tab:raw-series). 
+    The complete data set was spread across 60 different tables (years and
+    regions) that were merged into one large table (table ref:tab:raw-series).
 
 #+caption: Original data structure. label:tab:raw-series
 | Périmètre |       Date | Heures | Consommation |
@@ -153,19 +145,18 @@
 | Grand-Est | 2016-01-01 |  01:00 |         5014 |
 | .....     |            |        |              |
 
-    As data rarely comes clean, there were some imperfections in the names of the
-    regions. Some days the regions were named after the old ones e.g.
+    As data rarely comes clean, there were some imperfections in the names of
+    the regions. Some days the regions were named after the old ones e.g.
     Languedoc-Roussillon et Midi-Pyrénées instead of Occitanie, or Aquitaine,
     Limousin et Poitou-Charentes instead of Nouvelle-Aquitaine.
 
     With the raw data cleaned from imperfections, each column was formatted to
     required data type. A pivot table was then used so as to move each region as
-    a column, and each row is a consumption measurement. The date then needed to
+    a column, and each row as a consumption measurement. The date then needed to
     be set as UTC in order to avoid problems at the summer/winter time change.
-    As the original frequency of the data is 15 minutes but as there are
-    only data every 30 minutes, the table was resampled by taking the sum for
-    each 30 minutes, resulting in the table below (table
-    ref:tab:regional-series).
+    As the original frequency of the data is 15 minutes, with only data every 30
+    minutes available, the table was resampled by taking the sum for each 30
+    minutes, resulting in the table below (table ref:tab:regional-series).
  
 #+BEGIN_SRC ipython :exports none :results silent
   from os.path import join
@@ -290,11 +281,9 @@ is much higher than at night, with more spread in the summmer than in the winter
    consommation.to_csv(join(data_path, "consommation.csv"))
  #+END_SRC
 
-*** DONE Transformation
-    CLOSED: [2018-06-08 Fri 11:04]
+*** Transformation
 
-**** DONE Stationarity
-     CLOSED: [2018-06-08 Fri 11:04]
+**** Stationarity
      
      The original series feature a strong seasonality as show in figure ref:fig:acf-raw.
  
@@ -331,7 +320,7 @@ the values separated by 7 days). This was able to remove most of the seasonality
  [[file:./img/acf_test_R.png]]
 
 So as to get as close to stationarity as possible without loosing too much data,
-another difference was tken, but this time only 1 day. Now, most of the values
+another difference was taken, but this time only 1 day difference. Now, most of the values
 stay within the confidence interval (fig. ref:fig:acf-final).
 
  #+BEGIN_SRC R :results output graphics :file ./img/acf_diff71_R.png :width 900 :height 600
@@ -396,8 +385,7 @@ The Dickey-Fuller test was used on all the series and confirmed that
  : 1.601721472225731e-22
  :END:
 
-**** DONE Standardisation
-     CLOSED: [2018-06-08 Fri 11:04]
+**** Standardisation
      
  In order to standardise the data so as to get a mean of 0 and standard deviation of
  1, the z-score was applied to each individual series eqref:eq:zscore.
@@ -435,20 +423,20 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
      
 
    \pagebreak
-** DONE GCC description
-   CLOSED: [2018-06-09 Sat 13:43]
+** GCC description
    
-   As described before, the GCC is a very general non parametric similarity metric (as it does not
-   assume any parametric model for the series), that look at the dependencies
-   between series using their cross correlation. The main idea is that it is
-   possible to first cluster the series by the dependency among the series,
-   without any assumption made on those. Then it is possible to break down those
-   more homogeneous clusters looking at the internal dependency of those series.
+   As described before, the GCC is a very general non parametric similarity
+   metric (as it does not assume any parametric model for the series), that look
+   at the dependencies between series using their cross correlation. The main
+   idea is that it is possible to first cluster the series by the dependency
+   among the series, without any assumption made on those. Then it is possible
+   to break down those more homogeneous clusters looking at the internal
+   dependency of those series.
 
-   The main idea behind the GCC computation is a metric based on the determinant
-   of the cross correlation matrices from lag zero to lag k. To do this, for
-   each lag k, it is necessary to construct the $X(i)$ and $X(j)$ matrices from
-   the $i$ and $j$ series of size N as follow:
+   The GCC computation is based on the determinant of the cross correlation
+   matrices from lag zero to lag k. To do this, for each lag k, it is necessary
+   to construct the $X(i)$ and $X(j)$ matrices from the $i$ and $j$ series of
+   size N as follow:
 
    \begin{equation}
    X(i) = 
@@ -474,7 +462,7 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
 
    where $\widehat{R}$ is the sample correlation matrix of each matrix. This gives
    a similarity value between 0 and 1 where 1 is the highest degree of similarity
-   possible and 0 with absolutely no cross dependency between the series. 
+   possible and 0 when there is absolutely no cross dependency between the series. 
 
    For clustering it is then necessary to build a distance matrix as such:
 
@@ -490,7 +478,7 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
 
    It is necessary to do $1-\widehat{GCC}(X_i,X_j)$ if the original measure was
    calculated as in equation ref:eq:GCC, which is a similarity metric, and what is
-   needed here is a distance where 0 means close and 1 means far apart.
+   needed here is a distance where 0 means series close to each other and 1 means far apart.
    
    There are 2 ways for selecting the number of lag k. Either by taking the
    maximum order p of all series fitted an auto-regressive model with BIC as the
@@ -499,10 +487,8 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
    correlations, as described in cite:gcc2017.
 
    
-** DONE GCC calculation
-   CLOSED: [2018-06-07 Thu 11:28]
-**** DONE Selecting k
-     CLOSED: [2018-06-07 Thu 11:28]
+** GCC calculation
+**** Selecting k
      
      In order to select k, the maximum lag was taken by fitting auto-regressive
      models to each of the series (using BIC). A maximum lag of 40 was used and was computed
@@ -571,8 +557,7 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
     #+caption: Partial autocorrelation of the stationary scaled data. label:fig:pacf
     #+RESULTS:
     [[file:./obipy-resources/324eFu.png]]
-**** DONE Distance matrix
-     CLOSED: [2018-06-07 Thu 11:28]
+**** Distance matrix
      
 The GCC was computed in both R and in Python to validate the results.
 
@@ -662,10 +647,8 @@ language was of \pm5.3e^{-15} and can therefore be considered equivalent.
 
 
 \pagebreak
-* DONE Results[2/2]
-  CLOSED: [2018-06-08 Fri 11:04]
-** DONE Clustering[2/2]
-   CLOSED: [2018-06-07 Thu 13:09]
+* Results
+** Clustering
    
 #+BEGIN_SRC R :exports none :results silent
   DM_GCC <- read.csv(file="data/DM_GCC_37_R.csv", row.names=1)
@@ -674,8 +657,7 @@ language was of \pm5.3e^{-15} and can therefore be considered equivalent.
    Hierarchical clustering was used, as it doesn't require a defined number of
    clusters to be set, and can directly be computed with a distance matrix. 
 
-*** DONE Linkage
-    CLOSED: [2018-06-07 Thu 11:34]
+*** Linkage
     
     More specifically, agglomerative clustering was used, where each data points
     starts in its own cluster and iteratively gets merged with its closest cluster.
@@ -686,7 +668,7 @@ language was of \pm5.3e^{-15} and can therefore be considered equivalent.
     closer to 1 means that the defined clusters respect better the original
     distances. 
     
-    As such, both R and Python, the most conservative method was the
+    As such, in both R and Python, the most conservative method was the
     average linkage and was therefore used to create the dendrogram (table
     ref:tab:cophonetic). Different results were obtained for the 'centroid' and
     'median' method, but still didn't beat the 0.77 of cophonetic correlation of
@@ -759,7 +741,7 @@ language was of \pm5.3e^{-15} and can therefore be considered equivalent.
 | R      |    0.77 |     0.55 |     0.69 |   0.29 |   0.69 | 0.66 |     0.74 |
 
      
-    In ref:fig:heatmap we can clearly see that there is a lot of structure.
+    In figure ref:fig:heatmap we can clearly see that there is a lot of structure.
     There are distances across the whole range of the GCC, making it easier to
     distinguish the groups. In fact, the regions appear the be the main
     influencing factor.
@@ -779,12 +761,12 @@ language was of \pm5.3e^{-15} and can therefore be considered equivalent.
     :END:
     
     \pagebreak
-*** DONE Cluster number
-    CLOSED: [2018-06-07 Thu 13:08]
+*** Cluster number
     
     Determining the number of cluster can be very challenging. The /factoextra/
-    package in R provides functions to intent finding that number
-    automatically. However, as you can see in figure ref:fig:nbclusters_r, it isn't always that obvious.
+    package in R citep:kassambara2016factoextra provides functions to intent
+    finding that number automatically. However, as you can see in figure
+    ref:fig:nbclusters_r, it isn't always that obvious.
 
     The larger silhouette width is observed at 2 clusters but there is a small
     peak at 5 clusters. We can also see that the more clusters the better the
@@ -871,14 +853,12 @@ language was of \pm5.3e^{-15} and can therefore be considered equivalent.
 
     
     \pagebreak
-** DONE Cluster analysis[3/3]
-   CLOSED: [2018-06-08 Fri 11:03]
+** Cluster analysis
    
-*** DONE Mapping the clusters
-    CLOSED: [2018-06-07 Thu 15:49]
+*** Mapping the clusters
 
     If we were to only use 2 clusters, the PACA region is clearly the most
-    distinct of all the regions (ref:fig:2clusters_map).
+    distinct of all the regions (fig. ref:fig:2clusters_map).
 
   #+BEGIN_SRC python :session :results silent
     import pygal
@@ -984,8 +964,7 @@ clustered_regions
    
 \pagebreak
 \pagebreak
-*** DONE Within clusters structure
-    CLOSED: [2018-06-08 Fri 11:03]
+*** Within clusters structure
 
     In this section, the goal was to find out if there was more structure within
     each of the clusters. A dendrogram was plotted for each cluster and the
@@ -1040,8 +1019,8 @@ clustered_regions
     Cluster 2 contains 2 regions (Nouvelle-Aquitaine and Occitanie). In figure
     ref:fig:cluster2, in the top plot the label was coloured by the region and
     the bottom plot the label was coloured by the time of the day. We can see
-    that the most important must important clustering is by region, but then
-    similar clustering, by time of the day, as cluster 1 is observed.
+    that the most important clustering is by region, but then
+    similar clustering as in cluster 1, by time of the day, is observed.
  
  #+BEGIN_SRC ipython :ipyfile 
    sub_DM_GCC = DM_GCC.loc[clusters==2, clusters==2]
@@ -1130,7 +1109,7 @@ clustered_regions
  Cluster 4 contains 4 regions (Bretagne, Centre-Val de Loire, Ile-de-France,
  Normandie and Pays-de-la-Loire), but only late night and early morning times .
  Here the regional clusters are very clear as all regions have been split with
- no clear time cluster (ref:fig:cluster4).
+ no clear time cluster (fig. ref:fig:cluster4).
  
 
  #+BEGIN_SRC ipython :ipyfile 
@@ -1219,8 +1198,7 @@ regions are clustered into mornings and evenings.
 
 
  \pagebreak
-*** DONE Clusters trends
-    CLOSED: [2018-06-08 Fri 11:03]
+*** Clusters trends
     
 As no information about the size of the population in each region was used, the
 absolute consumption were not compared between clusters. However, we can still
@@ -1364,7 +1342,40 @@ evenings, as shown by the higher consumption around 20:00.
   :END:
 
   \pagebreak
-* TODO Conclusion
+* Conclusion
+  
+The clustering of the electricity consumption of the French regions was
+successful, as a very high degree of structure was observed. It was possible to
+group the $12 \times 48$ regions and time of day into 5 main geographical
+clusters. But also detect further clustering possibilities within each of those.
+Some clusters we dominated by different consumption in the morning, afternoon
+and night. Some other had further geographical delimitation, and others were a
+mix of both.
+
+The amount of data was too small to detect any clear long term trends, but
+enough to detect periods of lower or higher consumption. On the other hand, the
+use of air conditioning in the summer was detected for the 2 clusters in the
+south of France. Furthermore, those 2 southern clusters also exhibited later
+lifestyle with a much higher consumption around 20:00. Most likely due to the
+weather being too hot during the days and people enjoying going out in the
+evenings.
+
+The GCC, as defined by cite:gcc2017, was successfully able to detect cross
+dependencies between the series to a very fine detail. Although it can be
+computationally expensive and slow for large series datasets, it has allowed
+their clustering without any pre-assumption about these. It is therefore a very
+competent metric for any exploratory analysis.
+
+Both Python and R now provide some very mature environment for the manipulation
+of time series. The numpy citep:walt2011numpy, pandas citep:mckinney2010data and
+scipy citep:jones2014scipy packages available in Python provide with a very
+easy, efficient and consistent set of tools, but can sometimes lack the
+automatic statistical reports provided by most functions in R cite:team2013r. As
+such R has now many tried and tested packages that offer a very high level of
+details in the result with a very minimum amount of code. All in all, python
+seemed faster and easier for the manipulation of the data, but R provided with a
+much stronger level of details for statistical analysis and clustering tools
+citep:kassambara2016factoextra.
 
 
 bibliographystyle:apalike
