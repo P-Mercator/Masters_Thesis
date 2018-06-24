@@ -122,16 +122,15 @@
    cross correlation that can cluster using the linear dependency between the
    series. As such, it is very general and non parametric. However, as
    demonstrated by cite:gcc2017, clustering by cross dependency can produce
-   significantly different results compared to those other methods. It is
-   therefore expected to give more informative clusters compared to a univariate
-   distance like the Euclidean distance.
+   significantly different results compared to those other methods, such as univariate
+   distances like the Euclidean distance.
    
    This study first describes the data and the required preparation be applying
    the GCC. The metric was implemented both in R and in Python (for comparison
    purpose). A simple agglomerative hierarchical clustering is used as it does
    not require any assumption on the number of clusters. The clusters will then
    be analysed to find further structure and identify their dynamic patterns.
-   Finally, we will look at its efficacy against the Euclidean distance in
+   Finally, we will look at the differences with the Euclidean distance in
    finding clusters of electricity consumption in France.
    
    \pagebreak
@@ -893,11 +892,16 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
 ** Cluster description
    
    #+BEGIN_SRC ipython
-     clusters_euc = hcl.fcluster(linkage_euc, t=5, criterion="maxclust")
+     clusters_euc = hcl.fcluster(linkage_euc, t=2, criterion="maxclust")
      cluster_df = pd.DataFrame({'region':DM_GCC.index.to_series().apply(lambda x: x.split('_')[0]),
                                 'time':DM_GCC.index.to_series().apply(lambda x: x.split('_')[1]),
                                 'gcc':clusters,'euc':clusters_euc})
    #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[1009]:
+   :END:
    
    In Fig. ref:fig:comp_gcc_time, we can see that cluster 1, 2 and 3 are not
    related to the time of the day as there are as many series for each of the
@@ -1282,16 +1286,18 @@ early and later times clustering.
 *** Clusters patterns
     
 As no information about the size of the population in each region was used, the
-absolute consumption were not compared between clusters. However, we can still
+absolute consumptions were not compared between clusters. However, we can still
 compare relative changes over the years (Fig. ref:fig:cluster-trend1y), seasons
 (Fig. ref:fig:cluster-trend3m) and a typical day (Fig. ref:fig:cluster-day).
 
-The one year moving average trend estimate of each cluster seem to suggest that the regions that had
-lower consumptions in 2013-2014 have increased their consumptions in 2016-2017,
-and inversely for regions that had it higher in the 2013-2014 period (Fig.
-ref:fig:cluster-trend1y). The PACA region (cluster 1) is also clearly
-differenciated from the other ones. However, it is difficult to get clear
-conclusions as there are not enough data to analyse long term trends.
+On Fig. ref:fig:cluster-trend1y, The one year moving average trend estimate of
+each cluster seem to suggest that the regions that had lower consumptions in
+2013-2014 have increased their consumptions in 2016-2017, and inversely for
+regions that had it higher in the 2013-2014 period. The PACA region (cluster 1)
+is also clearly differentiated from the other ones. Overall, it is difficult to
+draw conclusions over the longer term trends, as there are not enough data to
+analyse those. The general pattern observed during those 4.5 years are most
+likely due to weather conditions across each year.
   
   #+BEGIN_SRC ipython :ipyfile
     from scipy.stats.mstats import zscore
@@ -1320,10 +1326,11 @@ conclusions as there are not enough data to analyse long term trends.
   [[file:./obipy-resources/d2YRN3.png]]
   :END:
   
-In the three months moving average trend (Fig. ref:fig:cluster-trend3m), we can see that cluster 1
-and two have a higher energy consumption during the summer. This is most likely
-due to the use of air conditioning, as those two clusters are in the south of
-France, which is not really common (nor necessary) in the north. 
+In the three months moving average trend (Fig. ref:fig:cluster-trend3m), we can
+see that cluster 1 and 2 have a higher energy consumption during the summer.
+This is most likely due to the use of air conditioning, as those two clusters
+are in the south of France, which is not really common (nor necessary) in the
+north. In general, the energy consumption is significantly higher during the winter.
 
   #+BEGIN_SRC ipython :ipyfile
     from scipy.stats.mstats import zscore
@@ -1351,6 +1358,12 @@ France, which is not really common (nor necessary) in the north.
   [[file:./obipy-resources/vlkDGK.png]]
   :END:
   
+  Cluster 3 and 5 have the highest energy consumption during the week
+  (ref:fig:cluster-week) and the lowest during the weekend. It is not surprising
+  for cluster 5 is a day cluster. However, cluster 3 has a notably different
+  consumption that the other two normal cluster (1 and 2). On the opposite,
+  cluster 4, which is a night cluster, has higher consumption during the weekend
+  than during the week.
 
   #+BEGIN_SRC ipython :ipyfile
     from scipy.stats.mstats import zscore
@@ -1366,13 +1379,16 @@ France, which is not really common (nor necessary) in the north.
     linkage = hcl.linkage(squareform(DM_GCC), method='average')
     clusters = hcl.fcluster(linkage, t=5, criterion="maxclust")
     consommation.groupby(clusters, axis=1).mean().groupby(consommation.index.weekday).mean().plot(figsize=(10,5))
+    ax = plt.gca()
+    ax.set_xlabel('Day of the week')
     plt.show()
   #+END_SRC
   
   #+RESULTS:
   :RESULTS:
-  # Out[316]:
-  [[file:./obipy-resources/FhdChP.png]]
+  # Out[1006]:
+  #+caption: Mean energy consumption of each cluster across the days of the week. label:fig:cluster-week
+  [[file:./obipy-resources/bfVeHq.png]]
   :END:
   
 Over the day (Fig. ref:fig:cluster-day), cluster 1, and to a smaller extend
@@ -1438,7 +1454,7 @@ evenings, as shown by the higher consumption around 20:00.
     plt.show()
 
   #+END_SRC
-
+  
   #+RESULTS:
   :RESULTS:
   # Out[169]:
@@ -1446,11 +1462,19 @@ evenings, as shown by the higher consumption around 20:00.
   [[file:./obipy-resources/zcbyX7.png]]
   :END:
 
-  \pagebreak
+  \newpage
 ** Comparison with Euclidean distance
    
-   
-#+BEGIN_SRC ipython :exports none :ipyfile :results raw drawer
+The silhouette statistic seem to suggest a higher number of clusters when using
+the Euclidean distance (Fig. ref:fig:euc-sil), with 59 clusters. As before, this
+study will only focus on the main clusters as shown in Fig. ref:fig:cluster-euc.
+There, the main observable cluster are of the nights, on the left, (00:00 to
+9:30) and days, on the right (5:00 to 23:30). The time clustering is also shown
+in ref:fig:time-euc. It is only after this clustering
+that it is possible to look at regional clusters. Although that differentiation
+is possible, it occurs low in the tree.
+
+#+BEGIN_SRC ipython :exports results :ipyfile :results raw drawer
   import pandas as pd
   import scipy.cluster.hierarchy as hcl
   from scipy.spatial.distance import squareform
@@ -1482,8 +1506,132 @@ evenings, as shown by the higher consumption around 20:00.
 #+RESULTS:
 :RESULTS:
 # Out[245]:
+#+caption: Mean silhouette width of each cluster number. label:fig:euc-sil
 [[file:./obipy-resources/0EBaBh.png]]
 :END:
+
+ #+BEGIN_SRC ipython :ipyfile 
+   from scipy.spatial.distance import pdist, squareform
+   from scipy.stats.mstats import zscore
+   from os.path import join
+
+   consommation = pd.read_csv(join('data', 'consommation.csv'), index_col=0)
+   consommation = consommation.diff(7).diff(1).iloc[8:,:]
+   consommation = consommation.apply(zscore, axis=0)
+
+   pdist_euc = pdist(consommation.values.T, 'euclidean')
+   DM_euc = squareform(pdist_euc)
+
+   DM_euc = pd.DataFrame(
+       DM_euc, index=consommation.columns, columns=consommation.columns)
+   linkage_euc = hcl.linkage(squareform(DM_euc), method='ward')
+
+   fig = plt.figure(figsize=(8,10), dpi=96)
+   fig.add_subplot(2,1,1)
+   labels = [l.split('_')[0] for l in DM_euc.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(linkage_euc,
+                  labels = labels)
+   my_palette = plt.cm.get_cmap("tab20", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   fig.add_subplot(2,1,2)
+   labels = [l.split('_')[1] for l in DM_euc.columns]
+   unique_labels = np.unique(labels)
+   hcl.dendrogram(linkage_euc,
+                  labels = labels)
+   my_palette = plt.cm.get_cmap("coolwarm", len(unique_labels))
+   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
+   ax = plt.gca()
+   xlbls = ax.get_xmajorticklabels()
+   for lbl in xlbls:
+       lbl.set_color(label_color[lbl.get_text()])
+
+   plt.show()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[1008]:
+ #+caption: Dendrogram of clusters computed using the Euclidean distance. The labels of the top plot are coloured by region and the bottom plot by time of the day. Red is early morning (00:00 and later) and blue is late at night (until 23:30), lighter colours are towards midday. label:fig:cluster-euc
+ [[file:./obipy-resources/1mqMed.png]]
+ :END:
+ 
+   #+BEGIN_SRC ipython :ipyfile :export results :results raw drawer
+     gcc_time = cluster_df.groupby('euc')['time'].value_counts().unstack().T
+     gcc_time.index = pd.to_datetime(gcc_time.index).time 
+     gcc_time.plot(figsize=(12,5))
+     plt.xticks(gcc_time.index,gcc_time.index, rotation='vertical')
+     ax = plt.gca()
+     ax.set_ylabel('Number of series in cluster')
+     ax.set_xlabel = 'Time of the day'
+     fig.autofmt_xdate()
+     plt.show()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[1010]:
+   #+caption: Cluster composition with time of the day label:fig:time-euc
+   [[file:./obipy-resources/k9rmWB.png]]
+   :END:
+   
+   In Fig. ref:fig:euc-trend3m, we can see that the morning cluster consumes
+   constantly more during the winter than during the day. This most likely due
+   to keeping the household warm. And inversely for the
+   summer, as the air conditioning is mostly used during the day.
+   
+   #+BEGIN_SRC ipython :ipyfile :exports results :results raw drawer
+     consommation = pd.read_csv(join('data', 'consommation.csv'), index_col=0)
+     consommation.index = pd.to_datetime(consommation.index, format="%Y-%m-%d")
+     consommation = consommation.apply(zscore, axis=0)
+     consommation.groupby(clusters_euc, axis=1).mean().rolling(30*3,center=True).mean().plot(
+         figsize=(10,5))
+     plt.show()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[1013]:
+  #+caption: Three months centered moving average trend of each cluster. label:fig:euc-trend3m
+   [[file:./obipy-resources/vND0KW.png]]
+   :END:
+   
+   In Fig. ref:fig:euc-week, the nights have a higher consumption during the
+   weekend than during the week. This was also observed with the GCC distance
+   (cluster 4 and 5 in Fig. ref:fig:cluster-day).
+   
+   #+BEGIN_SRC ipython :ipyfile :exports results :results raw drawer
+     #clusters = hcl.fcluster(linkage, t=5, criterion="maxclust")
+     consommation.groupby(clusters_euc, axis=1).mean().groupby(consommation.index.weekday).mean().plot(figsize=(10,5))
+     plt.show()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[1014]:
+  #+caption: Mean energy consumption of each cluster across the days of the week. label:fig:euc-week
+   [[file:./obipy-resources/ROBAN0.png]]
+   :END:
+   
+*** Not used :noexport:
+   
+   #+BEGIN_SRC ipython
+     cluster_df.groupby('euc')['region'].value_counts().unstack().T.plot.bar()
+     ax = plt.gca()
+     ax.set_ylabel('Number of series in cluster')
+     plt.show()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[1011]:
+   [[file:./obipy-resources/juK6gG.png]]
+   :END:
 
 #+BEGIN_SRC ipython :exports none :ipyfile :results raw drawer
   from gap_statistic import OptimalK
@@ -1549,55 +1697,6 @@ evenings, as shown by the higher consumption around 20:00.
 :END:
 
 
- #+BEGIN_SRC ipython :ipyfile 
-   from scipy.spatial.distance import pdist, squareform
-   from scipy.stats.mstats import zscore
-   from os.path import join
-
-   consommation = pd.read_csv(join('data', 'consommation.csv'), index_col=0)
-   consommation = consommation.diff(7).diff(1).iloc[8:,:]
-   consommation = consommation.apply(zscore, axis=0)
-
-   pdist_euc = pdist(consommation.values.T, 'euclidean')
-   DM_euc = squareform(pdist_euc)
-
-   DM_euc = pd.DataFrame(
-       DM_euc, index=consommation.columns, columns=consommation.columns)
-   linkage_euc = hcl.linkage(squareform(DM_euc), method='ward')
-
-   fig = plt.figure(figsize=(10,12), dpi=96)
-   fig.add_subplot(2,1,1)
-   labels = [l.split('_')[0] for l in DM_euc.columns]
-   unique_labels = np.unique(labels)
-   hcl.dendrogram(linkage_euc, color_threshold=250,
-                  labels = labels)
-   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
-   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
-   ax = plt.gca()
-   xlbls = ax.get_xmajorticklabels()
-   for lbl in xlbls:
-       lbl.set_color(label_color[lbl.get_text()])
-
-   fig.add_subplot(2,1,2)
-   labels = [l.split('_')[1] for l in DM_euc.columns]
-   unique_labels = np.unique(labels)
-   hcl.dendrogram(linkage_euc,
-                  labels = labels)
-   my_palette = plt.cm.get_cmap("RdGy", len(unique_labels))
-   label_color = {l:my_palette(i) for l, i in zip(unique_labels, np.arange(len(unique_labels)))}
-   ax = plt.gca()
-   xlbls = ax.get_xmajorticklabels()
-   for lbl in xlbls:
-       lbl.set_color(label_color[lbl.get_text()])
-
-   plt.show()
- #+END_SRC
-
- #+RESULTS:
- :RESULTS:
- # Out[278]:
- [[file:./obipy-resources/QWtPWh.png]]
- :END:
 
    #+BEGIN_SRC ipython :exports none
      clusters_euc = hcl.fcluster(linkage_euc, t=5, criterion="maxclust")
@@ -1614,60 +1713,6 @@ evenings, as shown by the higher consumption around 20:00.
    [[file:./obipy-resources/NduieH.png]]
    :END:
    
-   #+BEGIN_SRC ipython :ipyfile :exports results :results raw drawer
-     consommation.groupby(clusters_euc, axis=1).mean().rolling(30*3,center=True).mean().plot(
-         figsize=(10,5))
-     plt.show()
-   #+END_SRC
-
-   #+RESULTS:
-   :RESULTS:
-   # Out[280]:
-   [[file:./obipy-resources/iTz75G.png]]
-   :END:
-#+BEGIN_SRC ipython :ipyfile :exports results :results raw drawer
-    #clusters = hcl.fcluster(linkage, t=5, criterion="maxclust")
-    consommation.groupby(clusters_euc, axis=1).mean().groupby(consommation.index.weekday).mean().plot(figsize=(10,5))
-    plt.show()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[318]:
-[[file:./obipy-resources/ptG5Iz.png]]
-:END:
-   
-   #+BEGIN_SRC ipython :ipyfile :export results :results raw drawer
-     gcc_time = cluster_df.groupby('euc')['time'].value_counts().unstack().T
-     gcc_time.index = pd.to_datetime(gcc_time.index).time 
-     gcc_time.plot(figsize=(12,5))
-     plt.xticks(gcc_time.index,gcc_time.index, rotation='vertical')
-     ax = plt.gca()
-     ax.set_ylabel('Number of series in cluster')
-     ax.set_xlabel = 'Time of the day'
-     fig.autofmt_xdate()
-     plt.show()
-   #+END_SRC
-
-   #+RESULTS:
-   :RESULTS:
-   # Out[871]:
-   [[file:./obipy-resources/El73Yy.png]]
-   :END:
-   
-   
-   #+BEGIN_SRC ipython
-     cluster_df.groupby('euc')['region'].value_counts().unstack().T.plot.bar()
-     ax = plt.gca()
-     ax.set_ylabel('Number of series in cluster')
-     plt.show()
-   #+END_SRC
-
-   #+RESULTS:
-   :RESULTS:
-   # Out[875]:
-   [[file:./obipy-resources/80r6Gt.png]]
-   :END:
    
    gcc
    cluster 1 -> 2 (00:00 to 9:30) 4 rest
@@ -1676,14 +1721,15 @@ evenings, as shown by the higher consumption around 20:00.
    cluster 4 -> 1,3,5
    cluster 5 -> 1,3,5
    
+\newpage
 * Conclusion
   
-The clustering of the electricity consumption of the French regions was
-successful, as a very high degree of structure was observed. It was possible to
-group the 576 time series (12 regions $\times$ 48 half hours) into five main geographical
+The application of the GCC to the electricity consumption of the French regions was
+successful, as a high degree of meaningful clustering was detected. It was possible to
+group the 576 time series (12 regions $\times$ 48 half hours) into five clear 
 clusters. But also detect further clustering possibilities within each of those.
 Some clusters were dominated by different consumption in the morning, afternoon
-and night. Some other had further geographical delimitation, and others were a
+and night. Some other had further geographical delimitation, or were a
 mix of both.
 
 The amount of data was too small to detect any clear long term trends, but
@@ -1692,13 +1738,15 @@ use of air conditioning in the summer was detected for the two clusters in the
 south of France. Furthermore, those two southern clusters also exhibited later
 lifestyle with a much higher consumption around 20:00. Most likely due to the
 weather being too hot during the days and people enjoying going out in the
-evenings.
+evenings. Furthermore, nights clusters tend to consume more electricity during
+the weekend than during the week.
 
 The GCC, as defined by cite:gcc2017, was successfully able to detect cross
 dependencies between the series to a very fine detail. Although it can be
-computationally expensive and slow for large series datasets, it has allowed
-their clustering without any pre-assumption about these. It is therefore a very
-competent metric for any exploratory analysis.
+computationally expensive and slow for large series datasets, it has allowed to
+detect geographical clusters that were more difficulty detected by the Euclidean
+distance. It is therefore a very competent metric that can greatly help for any
+exploratory analysis.
 
 Both Python and R now provide some very mature environment for the manipulation
 of time series. The numpy citep:walt2011numpy, pandas citep:mckinney2010data and
