@@ -1,6 +1,6 @@
 #+PROPERTY: header-args :eval no-export :exports results
 #+PROPERTY: header-args:R :session kernel-4bdb86b2-8430-4be0-bfaa-8eabd08a3372.json
-#+PROPERTY: header-args:ipython :session kernel-443284f1-6496-4c25-b4ec-9cb823141c16.json
+#+PROPERTY: header-args:ipython :session kernel-dc764c61-ec02-421a-80e9-60b65820585e.json
 #+PROPERTY: header-args:ipython+ :results raw drawer
 
 #+OPTIONS: toc:nil 
@@ -15,10 +15,9 @@
     jupyter-kernel --kernel=python3
 #+END_SRC
 
-\pagebreak
 * Introduction
 
-    Clustering is a unsupervised machine learning task that tries to assign
+    Clustering is an unsupervised machine learning task that tries to assign
     labels to data. It does this by minimising the within group similarities
     and maximising the between groups dissimilarities. It is unsupervised as we
     generally do not know those labels citep:jain1999data.
@@ -27,75 +26,75 @@
     by an explanation on how those are usually applied to time series. The importance
     and structure of this work will then be explained. 
    
-*** Static data clustering
+** Static data clustering
 
-    As defined by cite:han2000data, clustering can be classified into multiple
-    kinds of methods: partitioning, hierarchical, density-based, grid-based and
-    model-based. All those methods were developed and thought for static data
-    type, or values fixed at a certain time, which are much easier to deal with
-    without the time dimension.
+   As defined by cite:han2000data, clustering can be classified into multiple
+   kinds of methods: partitioning, hierarchical, density-based, grid-based and
+   model-based. All those methods were developed and thought for static data
+   type, or values fixed at a certain time, which are much easier to deal 
+   without the time dimension.
 
-    Partitioning, can be crisp, as each data point is part of one and only one
-    cluster, or fuzzy and can have various degrees of belonging to multiple
-    clusters. Most common crisp partitioning algorithms are the k-means algorithm
-    citep:macqueen1967some, and the k-medioids citep:rousseeuw1990finding.
-    Similarly for the fuzzy ones, there is the c-means citep:bezdek1981objective
-    and the c-medioids citep:krishnapuram2001low.
+   Partitioning, can be crisp, as each data point is part of one and only one
+   cluster, or fuzzy and can have various degrees of belonging to multiple
+   clusters. Most common crisp partitioning algorithms are the k-means algorithm
+   citep:macqueen1967some, and the k-medioids citep:rousseeuw1990finding.
+   Similarly for the fuzzy ones, there is the c-means citep:bezdek1981objective
+   and the c-medioids citep:krishnapuram2001low.
    
-    Hierarchical clustering algorithms can either be agglomerative or divisive,
-    depending on whether it splits or merge clusters at each of its iterations.
-    The main advantage of these methods is that it doesn't require any knowledge
-    about the number of clusters. However, once a merge (or division) of clusters
-    occur, it cannot be redefined later. There exist some algorithms that try to
-    solve this issue citep:zhang1996birch,guha1998cure,karypis1999chameleon.
+   Hierarchical clustering algorithms can either be agglomerative or divisive,
+   depending on whether it splits or merge clusters at each of its iterations.
+   The main advantage of these methods is that it doesn't require any knowledge
+   about the number of clusters. However, once a merge (or division) of clusters
+   occur, it cannot be redefined later. There exist some algorithms that try to
+   solve this issue citep:zhang1996birch,guha1998cure,karypis1999chameleon.
    
-    Density-based algorithms will grow the clusters until a certain density
-    threshold is encountered in the neighbourhood. An example is the DBSCAN
-    algorithm citep:ester1996density. Grid-based algorithms will split the space
-    into a finite number of cells and perform the clustering operations of those
-    cells cite:wang1997sting. Finally, model-based clustering is either based on
-    statistical techniques like in cite:cheeseman1988autoclass or on neural
-    networks (see cite:carpenter1987massively,kohonen1998self).
+   Density-based algorithms will grow the clusters until a certain density
+   threshold is encountered in the neighbourhood. An example is the DBSCAN
+   algorithm citep:ester1996density. Grid-based algorithms will split the space
+   into a finite number of cells and perform the clustering operations of those
+   cells cite:wang1997sting. Finally, model-based clustering is either based on
+   statistical techniques like in cite:cheeseman1988autoclass or on neural
+   networks (see cite:carpenter1987massively,kohonen1998self).
 
                
-*** Dynamic Data and Time series clustering
+** Dynamic Data and Time series clustering
     
-    Time series are usually large datasets that have inherited, over time, of a high
-    dimensionality of dependent measurements. Interestingly, it is possible
-    to look at a series either as a high dimensional vector or as a single data
-    point. As shown by cite:liao2005clustering and cite:aghabozorgi2015time, the
-    interest for time series clustering has been growing in a wide variety of fields.
-    It is often an important step of exploratory analysis.
+   Time series are usually large datasets that have inherited, over time, of a high
+   dimensionality of dependent measurements. Interestingly, it is possible
+   to look at a series either as a high dimensional vector or as a single data
+   point. As shown by cite:liao2005clustering and cite:aghabozorgi2015time, the
+   interest for time series clustering has been growing in a wide variety of fields.
+   It is often an important step of exploratory analysis.
     
-    As defined by cite:liao2005clustering in his review (see Fig.
-    ref:fig:types_clusterTS), there are three types of time series clustering.
-    Raw-data based methods compare series directly and will usually compute a
-    distance or similarity metric. Then, there are feature based and model based
-    data that summarise each series into a set of parameters. The problem with
-    those is that it often can oversimplify the series, and although faster to
-    compute, requires many assumptions about each series to be made.
+   As defined by cite:liao2005clustering in his review (see Fig.
+   ref:fig:types_clusterTS), there are three types of time series clustering.
+   Raw-data based methods compare series directly and will usually compute a
+   distance or similarity metric. Then, there are feature based and model based
+   data that summarise each series into a set of parameters. The problem with
+   those is that it often can oversimplify the series, and although faster to
+   compute, requires many assumptions about each series to be made.
     
-    Furthermore, as explained in cite:gcc2017, previous time series clustering
-   methods have been using similarities among series based on their univariate
-   models in a parametric framework, by its periodogram or their
-   autocorrelation. Those methods are useful when the series are independent and
-   can be classified using their univariate models. However, it is also possible
-   use the linear dependencies present within those series, by using distances
-   such as cross-correlation that will summarise the correlation at multiple
-   lags. This can be important for series that do not demonstrate obvious
-   classification patterns.
-    
-    cite:aghabozorgi2015time has identified the four main aspects of time series
-    clustering research: the *dimensionality reduction* necessary to remove noise
-    and reduce the size of large series, *similarity/distance measures*,
-    *clustering algorithms* and cluster *prototypes* (or how to characterise a group
-    of data).
+   cite:aghabozorgi2015time has identified the four main aspects of time series
+   clustering research: the *dimensionality reduction* necessary to remove noise
+   and reduce the size of large series, *similarity/distance measures*,
+   *clustering algorithms* and cluster *prototypes* (or how to characterise a group
+   of data).
 
-   #+caption: Three time series clustering approaches: (a) raw-data-based, (b) feature-based, (c) model-based. citep:liao2005clustering label:fig:types_clusterTS
-   [[file:img/types_clusterTS.png]]
+  #+caption: Three time series clustering approaches: (a) raw-data-based, (b) feature-based, (c) model-based. citep:liao2005clustering label:fig:types_clusterTS
+  [[file:img/types_clusterTS.png]]
    
-   Essentially, once the distance matrix or extracted parameters of the time series
-   extracted, most of the static data clustering methods can be used as is.
+  Essentially, once the distance matrix or extracted parameters of the time series
+  extracted, most of the static data clustering methods can be used as is.
+    
+  Furthermore, as explained in cite:gcc2017, previous time series clustering
+  methods have been using similarities among series based on their univariate
+  models in a parametric framework, by its periodogram or their
+  autocorrelation. Those methods are useful when the series are independent and
+  can be classified using their univariate features. However, it is also possible
+  use the linear dependencies present within those series, by using distances
+  such as cross-correlation that will summarise the correlation at multiple
+  lags. This can be important for series that do not demonstrate obvious
+  classification patterns.
      
 ** Cluster electricity consumption using GCC
    
@@ -104,7 +103,7 @@
    population. cite:van1999cluster was one of the first to do this using the
    consumption in the Netherlands. Their approach was to use agglomerative
    hierarchical clustering on daily power consumption based on the root mean
-   square distance.
+   square distance (RMSD).
    
    The RMSD calculated between two series, $x$ and $y$ of length $T$, is
    calculated as such:
@@ -117,21 +116,22 @@
    series. Those distances are considered univariate, as it does not look at the
    linear dependencies present within the series.
    
-   In this thesis, I would like to show an application of the Generalised Cross
-   Correlation, defined by cite:gcc2017. It is a similarity metric based on
+   In this thesis, I would like to show an application of the Generalized Cross
+   Correlation (GCC), defined by cite:gcc2017. It is a similarity metric based on
    cross correlation that can cluster using the linear dependency between the
-   series. As such, it is very general and non parametric. However, as
+   series. As such, it is very general and non parametric. Moreover, as
    demonstrated by cite:gcc2017, clustering by cross dependency can produce
    significantly different results compared to those other methods, such as univariate
    distances like the Euclidean distance.
    
-   This study first describes the data and the required preparation be applying
-   the GCC. The metric was implemented both in R and in Python (for comparison
-   purpose). A simple agglomerative hierarchical clustering is used as it does
-   not require any assumption on the number of clusters. The clusters will then
-   be analysed to find further structure and identify their dynamic patterns.
-   Finally, we will look at the differences with the Euclidean distance in
-   finding clusters of electricity consumption in France.
+   The rest of the document is organised as follows: Section 2 describes the
+   data and the required preparation be applying the GCC. The metric was
+   implemented both in R and in Python (for comparison purpose). In section 3, a
+   simple agglomerative hierarchical clustering is used as it does not require
+   any assumption on the number of clusters. The clusters will then be analysed
+   to find further structure and identify their dynamic patterns. Finally, we
+   will look at the differences with the Euclidean distance in finding clusters
+   of electricity consumption in France.
    
    \pagebreak
 * Methodology
@@ -230,7 +230,7 @@
 
 The region with the highest consumption are observed in the Iles-de-France and
 the lowest in the Centre-Val de Loire. We can also clearly see yearly
-seasonality with higher consumption during winter times (Figure
+seasonality with higher consumption during winter times (Fig.
 ref:fig:regions-consumption), from October to March. The lowest mean and
 lowest variance consumption across France is at the end of July. We can also see
 a lower general lower consumption during the winter 2013-14, end December -
@@ -337,13 +337,14 @@ midday.
    }
  #+END_SRC
 
- #+caption: Autocorrelation function for the selected series of the original data. label:fig:acf-raw
+ #+caption: Autocorrelation function for selected series of the original data. label:fig:acf-raw
  #+RESULTS:
  [[file:./img/acf_diff7_R.png]]
  
 To try and remove it, we first take a regular difference, since the series have
-strong dependence compatible to long memory processes. For sake of simplicity, a
-regular difference instead of fractional ones. (Fig. ref:fig:acf-regular).
+strong dependence compatible to long memory processes. For sake of simplicity,
+we use a regular difference instead of fractional ones. (Fig.
+ref:fig:acf-regular).
  
  #+BEGIN_SRC R :results output graphics :file ./img/acf_test_R.png :width 900 :height 600
    par(mfrow=c(3,4))
@@ -353,13 +354,13 @@ regular difference instead of fractional ones. (Fig. ref:fig:acf-regular).
    }
  #+END_SRC
 
- #+caption: Autocorrelation function of the regularly differentiated series for selected series. label:fig:acf-regular
+ #+caption: Autocorrelation function of regularly differentiated series for selected series. label:fig:acf-regular
  #+RESULTS:
  [[file:./img/acf_test_R.png]]
 
 The weekly difference was then taken (difference between all the values
 separated by seven days). This was able to remove most of all seasonality, as
-most of the values stay within the confidence interval (fig. ref:fig:acf-final).
+most of the values stay within the confidence interval (Fig. ref:fig:acf-final).
 
  #+BEGIN_SRC R :results output graphics :file ./img/acf_diff71_R.png :width 900 :height 600
    par(mfrow=c(3,4))
@@ -369,7 +370,7 @@ most of the values stay within the confidence interval (fig. ref:fig:acf-final).
    }
  #+END_SRC
 
- #+caption: Autocorrelation function of the selected regularly and weekly differentiated series. label:fig:acf-final
+ #+caption: Autocorrelation function of regularly and weekly differentiated selected series. label:fig:acf-final
  #+RESULTS:
  [[file:./img/acf_diff71_R.png]]
  
@@ -431,7 +432,7 @@ The Dickey-Fuller test was used on all the series and confirmed that
 **** Standardisation
      
  In order to standardise the data so as to get a zero mean and standard deviation of
- 1, the z-score was applied to each individual series eqref:eq:zscore.
+ 1, the z-score was applied to each individual series:
 
  \begin{equation}
  z_t = \frac{x_t - \hat{\mu}}{\hat{\sigma}} \label{eq:zscore},
@@ -481,7 +482,7 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
 
    The GCC computation is based on the determinant of the cross correlation
    matrices from lag zero to lag k. To do this, for a given k, it is necessary
-   to construct the $X(i)$ and $X(j)$ matrices from the $i$-th and $j$-th series (of
+   to construct the $X(i)$ and $X(j)$ matrices from the series $i$ and $j$ (of
    size T) as follow:
 
    \begin{equation}
@@ -500,7 +501,7 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
    X(i,j) = (X(i),X(j)).
    \end{equation}
 
-   The GCC is can then be computed as:
+   The GCC can be computed as:
 
    \begin{equation}
    \widehat{GCC}(X_i,X_i) = 1 - \frac{|\widehat{R}_{X(i,j)}|^{k+1}}{|\widehat{R}_{X(i)}|^{k+1}|\widehat{R}_{X(j)}|^{k+1}}, \label{eq:GCC}
@@ -539,7 +540,7 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
      
      In order to select k, the maximum lag was taken by fitting auto-regressive
      models to each of the series (using BIC). A maximum lag of 40 was used and was computed
-     both in R and in Python (see Appendix). In both case, it found a maximum fitted lag of 37.
+     both in R and in Python (see appendix [[Code for selection of k]]). In both cases, it found a maximum fitted lag of 37.
      This k was considered sufficiently large to capture the cross dependencies
      between the series and was therefore used.
     
@@ -570,7 +571,8 @@ Std of z score is between 1.000280072824422  and  1.000280072824427
     [[file:./obipy-resources/324eFu.png]]
 **** Distance matrix
      
-The GCC was computed in both R and in Python to validate the results (see Appendix). The
+The GCC was computed in both R and in Python to validate the results (see
+Appendix [[Code for GCC computation]]). The
 maximum difference between the results of the computation in the two language
 was of \pm5.3e^{-15} and can therefore be considered equivalent.
     
@@ -606,7 +608,7 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
     There are different methods to compute that intra-cluster distance, referred to
     as linkage method. The most popular methods were compared using the cophenetic
     correlation, which is the correlation coefficient between the distances between
-    each point using their cluster distances and the original distance. A value
+    each point using their cluster distances and the original distances. A value
     closer to 1 means that the defined clusters respect better the original
     distances. 
     
@@ -679,13 +681,14 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
      
 #+caption: Cophenetic correlation of linkage methods. label:tab:cophenetic
 |        | Average | Centroid | Complete | Median | Single | Ward | Weighted |
+|--------+---------+----------+----------+--------+--------+------+----------|
 | Python |    0.77 |     0.73 |     0.69 |   0.70 |   0.69 | 0.66 |     0.74 |
 | R      |    0.77 |     0.55 |     0.69 |   0.29 |   0.69 | 0.66 |     0.74 |
 
      
     In Figure ref:fig:heatmap we can clearly see that there is a lot of structure.
     There are distances across the whole range of the GCC (0-1), making it easier to
-    distinguish the groups. In fact, the regions appear the be the main
+    distinguish the groups. In fact, the regions appear to be the main
     influencing factor.
 
     #+BEGIN_SRC ipython :ipyfile :results raw drawer
@@ -707,7 +710,7 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
     
     Determining the number of cluster can be very challenging. The silhouette
     score were compared for different cluster number (Fig. ref:fig:sil_gcc). A
-    higher value is observed at two clusters, then a slight peak at five clusters,
+    high value is observed at two clusters, then a slight peak at five clusters,
     until it increased rapidly to 44 clusters. That is a high number of cluster,
     but considering multiple time cluster within each of the 12 regions, we can
     see how that number can increase quickly. However, most of the analysis will
@@ -737,23 +740,28 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
   plt.xlabel('Number of clusters')
   plt.ylabel('Mean silhouette width')
   plt.show()
+
+  clusters = hcl.fcluster(linkage, t=44, criterion="maxclust")
+  consommation.columns.values
+  hcl.dendrogram(linkage, p=44, truncate_mode='lastp')
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[251]:
+# Out[13]:
 #+caption: Mean silhouette width for increasing cluster number. label:fig:sil_gcc
-[[file:./obipy-resources/pLOmzm.png]]
+[[file:./obipy-resources/4RsT8o.png]]
 :END:
 
-    In Fig. ref:fig:dendrogram, we can see that the regions are of high
-    importance to the construction of the clusters. Although 42 clusters is
+    In Figure ref:fig:dendrogram, we can see that the regions are of high
+    importance to the construction of the clusters. Although 44 clusters is
     suggested by the silhouette statistic, five cluster seem to be a clear cut.
+    For a detailed view of the 44 clusters see Appendix [[42 clusters of GCC]]. 
     Another way to look at those clusters is by looking the first two principal
     coordinates of the distance matrix (Fig. ref:fig:pca_cluster), where the
-    five clusters are again well defined. We can see that, although
-    cluster 1 and 4 are contain points far away from each other, five
-    clusters is a good generalisation of the data.
+    five clusters are again well defined. We can see that, although cluster 1
+    and 4 contain points far away from each other, five clusters is a good
+    generalisation of the data.
   
     #+BEGIN_SRC R :exports none :results output graphics :file ./img/dendrogram_R.png
       res <- hcut(as.dist(DM_GCC), k = 5, isdiss=TRUE)
@@ -806,7 +814,7 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
       fviz_cluster(list(data=DM_GCC, cluster=groups), geom='point')
     #+END_SRC
 
-    #+caption: Five clusters over the two principal components of the distance matrix. label:fig:pca_cluster
+    #+caption: Five clusters over the two principal coordinates of the distance matrix. label:fig:pca_cluster
     #+RESULTS:
     [[file:./img/region_clusters_R.png]]
 
@@ -903,10 +911,10 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
    # Out[1009]:
    :END:
    
-   In Fig. ref:fig:comp_gcc_time, we can see that cluster 1, 2 and 3 are not
+   In Figure ref:fig:comp_gcc_time, we can see that cluster 1, 2 and 3 are not
    related to the time of the day as there are as many series for each of the
    half-hours. However, cluster 4 is a night cluster (21:30 to 6:00) and cluster
-   5 is a day cluster (5:30 to 00:00). In fact this is also reflected in Fig.
+   5 is a day cluster (5:30 to 00:00). In fact this is also reflected in Figure
    ref:fig:comp_gcc_region, as clusters 4 and 5 share multiple regions.
    Surprisingly, all the series of the 'Hauts-de-France' were classified into the
    day cluster 5. Cluster 1 is the only cluster with only one region.
@@ -1050,7 +1058,7 @@ clustered_regions
 :END:
   
 
-  #+caption: Map of the five clusters on the map of France. The regions shown are the old more numerous regions, but the boundaries of the 12 new reiongs are the same. label:fig:5clusters_map
+  #+caption: Map of the five clusters on the map of France. The regions shown are the old more numerous regions, but the boundaries of the 12 new regions are the same. label:fig:5clusters_map
   [[file:./img/5clusters_map.png]]
    
 \pagebreak
@@ -1059,8 +1067,8 @@ clustered_regions
     
     In this section, the goal was to find out which structure within each of the
     clusters is left unexplained. A dendrogram was plotted for each cluster and
-    the label was coloured depending on the time of the day, where blue is late
-    in the day and blue is early morning. The
+    the label was coloured depending on the time of the day, where red is late
+    in the night and blue is early morning. The
     lighter colours are towards midday.
 
     In Figure ref:fig:cluster1, Cluster 1 only contains the PACA region, so the
@@ -1095,7 +1103,7 @@ clustered_regions
  [[file:./obipy-resources/7QKb7o.png]]
  :END:
 
-    Cluster two contains two regions (Nouvelle-Aquitaine and Occitanie). In Figure
+    Cluster 2 contains two regions (Nouvelle-Aquitaine and Occitanie). In Figure
     ref:fig:cluster2, in the top plot the label is coloured by the region and
     the bottom plot the label was coloured by the time of the day. We can see
     that the most important clustering is by region, but then
@@ -1145,10 +1153,10 @@ clustered_regions
  (Auvergne-Rhône-Alpes, Bourgogne-Franche-Comté and Grand-Est), similar daily
  stratification as in cluster 1 and 2 is occurring (at a distance of 0.3).
  However, the time of the day is now more important than the regions. At first,
- 3 clusters are formed, mostly defined by time of the day (at a distance of
+ three clusters are formed, mostly defined by time of the day (at a distance of
  0.45), then those are split into regions. On the left, we can see the mornings
  of Bourgogne-Franche-Comté and Grand-Est show more similarity, as those are not
- split until a ~2.4 distance.
+ split until a \pm0.24 distance.
 
  #+BEGIN_SRC ipython :ipyfile 
    sub_DM_GCC = DM_GCC.loc[clusters==3, clusters==3]
@@ -1290,7 +1298,7 @@ absolute consumptions were not compared between clusters. However, we can still
 compare relative changes over the years (Fig. ref:fig:cluster-trend1y), seasons
 (Fig. ref:fig:cluster-trend3m) and a typical day (Fig. ref:fig:cluster-day).
 
-On Fig. ref:fig:cluster-trend1y, The one year moving average trend estimate of
+On Figure ref:fig:cluster-trend1y, the one year moving average trend estimate of
 each cluster seem to suggest that the regions that had lower consumptions in
 2013-2014 have increased their consumptions in 2016-2017, and inversely for
 regions that had it higher in the 2013-2014 period. The PACA region (cluster 1)
@@ -1381,14 +1389,15 @@ north. In general, the energy consumption is significantly higher during the win
     consommation.groupby(clusters, axis=1).mean().groupby(consommation.index.weekday).mean().plot(figsize=(10,5))
     ax = plt.gca()
     ax.set_xlabel('Day of the week')
+    plt.xticks(np.arange(7), ('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'))
     plt.show()
   #+END_SRC
   
   #+RESULTS:
   :RESULTS:
-  # Out[1006]:
+  # Out[28]:
   #+caption: Mean energy consumption of each cluster across the days of the week. label:fig:cluster-week
-  [[file:./obipy-resources/bfVeHq.png]]
+  [[file:./obipy-resources/sEwzBN.png]]
   :END:
   
 Over the day (Fig. ref:fig:cluster-day), cluster 1, and to a smaller extend
@@ -1467,10 +1476,10 @@ evenings, as shown by the higher consumption around 20:00.
    
 The silhouette statistic seem to suggest a higher number of clusters when using
 the Euclidean distance (Fig. ref:fig:euc-sil), with 59 clusters. As before, this
-study will only focus on the main clusters as shown in Fig. ref:fig:cluster-euc.
+study will only focus on the main clusters as shown in Figure ref:fig:cluster-euc.
 There, the main observable cluster are of the nights, on the left, (00:00 to
 9:30) and days, on the right (5:00 to 23:30). The time clustering is also shown
-in ref:fig:time-euc. It is only after this clustering
+in Figure ref:fig:time-euc. It is only after this clustering
 that it is possible to look at regional clusters. Although that differentiation
 is possible, it occurs low in the tree.
 
@@ -1580,7 +1589,7 @@ is possible, it occurs low in the tree.
    [[file:./obipy-resources/k9rmWB.png]]
    :END:
    
-   In Fig. ref:fig:euc-trend3m, we can see that the morning cluster consumes
+   In Figure ref:fig:euc-trend3m, we can see that the morning cluster consumes
    constantly more during the winter than during the day. This most likely due
    to keeping the household warm. And inversely for the
    summer, as the air conditioning is mostly used during the day.
@@ -1601,7 +1610,7 @@ is possible, it occurs low in the tree.
    [[file:./obipy-resources/vND0KW.png]]
    :END:
    
-   In Fig. ref:fig:euc-week, the nights have a higher consumption during the
+   In Figure ref:fig:euc-week, the nights have a higher consumption during the
    weekend than during the week. This was also observed with the GCC distance
    (cluster 4 and 5 in Fig. ref:fig:cluster-day).
    
@@ -1754,7 +1763,7 @@ scipy citep:jones2014scipy packages available in Python provide with a very
 easy, efficient and consistent set of tools, but can sometimes lack the
 automatic statistical reports provided by most functions in R cite:team2013r. As
 such R has now many tried and tested packages that offer a very high level of
-details in the result with a very minimum amount of code. All in all, python
+details in the result with a very minimum amount of code. All in all, Python
 seemed faster and easier for the manipulation of the data, but R provided with a
 much stronger level of details for statistical analysis and clustering tools
 citep:kassambara2016factoextra.
@@ -1870,3 +1879,94 @@ bibliography:ref.bib
       DM_GCC, index=consommation.columns, columns=consommation.columns)
   DM_GCC.to_csv('data/DM_GCC_37.csv')
     #+END_SRC 
+    
+* 42 clusters of GCC
+  
+#+BEGIN_SRC ipython :exports results :ipyfile :results raw drawer
+  import pandas as pd
+  import scipy.cluster.hierarchy as hcl
+  from scipy.spatial.distance import squareform
+  from sklearn.metrics import silhouette_score
+  import numpy as np
+  import matplotlib.pyplot as plt
+
+  DM_GCC = pd.read_csv('data/DM_GCC_37.csv', index_col=0)
+  consommation = pd.read_csv('data/consommation.csv',index_col=0)
+
+  linkage = hcl.linkage(squareform(DM_GCC), method='average')
+  hcl.dendrogram(linkage, p=44, truncate_mode='lastp')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[14]:
+#+caption: Dendrogram of the clusters as computed using the GCC and truncated at 44 clusters as recommended by the silhouette analysis. The numbers indicate the size of each cluster.
+[[file:./obipy-resources/bnVUlL.png]]
+:END:
+
+#+BEGIN_SRC ipython :results raw
+  clusters = hcl.fcluster(linkage, t=44, criterion="maxclust")
+
+  cluster_df = pd.DataFrame({'region':DM_GCC.index.to_series().apply(lambda x: x.split('_')[0]),
+                             'time':DM_GCC.index.to_series().apply(lambda x: x.split('_')[1]),
+                                'gcc':clusters})
+  final_df = pd.pivot_table(cluster_df, values='gcc', columns='region',index='time')
+
+#+END_SRC
+
+#+caption: Label of each series for the 44 clusters. label:tab:final-table
+|          | A-R-A | B-F-C | Bret. | C-V-L | G-E | H-F | I-F | Nor. | N-A | Occ. | PACA | P-L |
+|----------+-------+-------+-------+-------+-----+-----+-----+------+-----+------+------+-----|
+| 00:00:00 |    12 |    13 |    22 |    28 |  15 |  29 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 00:30:00 |    12 |    14 |    22 |    26 |  15 |  29 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 01:00:00 |    12 |    14 |    22 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 01:30:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 02:00:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 02:30:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 03:00:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 03:30:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 04:00:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 04:30:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 05:00:00 |    12 |    14 |    23 |    26 |  15 |  30 |  24 |   25 |  11 |    8 |    3 |  21 |
+| 05:30:00 |    19 |    14 |    23 |    26 |  15 |  30 |  24 |   41 |  11 |    8 |    3 |  39 |
+| 06:00:00 |    19 |    14 |    23 |    26 |  15 |  30 |  24 |   41 |  11 |    8 |    3 |  39 |
+| 06:30:00 |    19 |    20 |    23 |    40 |  20 |  31 |  41 |   41 |  10 |    8 |    4 |  39 |
+| 07:00:00 |    19 |    20 |    39 |    40 |  20 |  31 |  41 |   41 |  10 |    7 |    4 |  39 |
+| 07:30:00 |    19 |    20 |    39 |    40 |  20 |  31 |  41 |   41 |  10 |    7 |    4 |  39 |
+| 08:00:00 |    19 |    20 |    39 |    40 |  20 |  31 |  41 |   41 |  10 |    7 |    4 |  39 |
+| 08:30:00 |    19 |    20 |    39 |    40 |  20 |  31 |  41 |   41 |  10 |    7 |    4 |  39 |
+| 09:00:00 |    19 |    20 |    39 |    40 |  20 |  31 |  41 |   41 |  10 |    7 |    4 |  39 |
+| 09:30:00 |    19 |    20 |    39 |    33 |  20 |  31 |  41 |   41 |  10 |    7 |    5 |  39 |
+| 10:00:00 |    19 |    20 |    39 |    33 |  20 |  31 |  41 |   41 |  10 |    7 |    5 |  39 |
+| 10:30:00 |    16 |    17 |    39 |    33 |  20 |  31 |  38 |   36 |  10 |    7 |    5 |  43 |
+| 11:00:00 |    16 |    17 |    39 |    33 |  20 |  31 |  38 |   36 |  10 |    7 |    5 |  43 |
+| 11:30:00 |    16 |    17 |    42 |    33 |  18 |  31 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 12:00:00 |    16 |    17 |    42 |    33 |  18 |  31 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 12:30:00 |    16 |    17 |    42 |    33 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 13:00:00 |    16 |    17 |    42 |    33 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 13:30:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 14:00:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 14:30:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 15:00:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 15:30:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 16:00:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 16:30:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 17:00:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 17:30:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    1 |  43 |
+| 18:00:00 |    16 |    17 |    42 |    35 |  18 |  32 |  38 |   36 |   9 |    6 |    2 |  43 |
+| 18:30:00 |    16 |    17 |    42 |    35 |  18 |  32 |  37 |   36 |   9 |    6 |    2 |  44 |
+| 19:00:00 |    16 |    17 |    42 |    35 |  18 |  32 |  37 |   36 |   9 |    6 |    2 |  44 |
+| 19:30:00 |    16 |    17 |    42 |    34 |  18 |  32 |  37 |   36 |   9 |    6 |    2 |  44 |
+| 20:00:00 |    16 |    17 |    42 |    34 |  18 |  32 |  37 |   36 |   9 |    6 |    2 |  44 |
+| 20:30:00 |    16 |    17 |    42 |    34 |  18 |  32 |  37 |   36 |   9 |    6 |    3 |  44 |
+| 21:00:00 |    16 |    13 |    42 |    27 |  18 |  29 |  37 |   36 |   9 |    6 |    3 |  44 |
+| 21:30:00 |    16 |    13 |    22 |    27 |  18 |  29 |  37 |   25 |  11 |    8 |    3 |  44 |
+|          |       |       |       |       |     |     |     |      |     |      |      |     |
+
+|          | A-R-A | B-F-C | Bret. | C-V-L | G-E | H-F | I-F | Nor. | N-A | Occ. | PACA | P-L |
+|----------+-------+-------+-------+-------+-----+-----+-----+------+-----+------+------+-----|
+| 22:00:00 |    16 |    13 |    22 |    27 |  18 |  29 |  37 |   25 |  11 |    8 |    3 |  44 |
+| 22:30:00 |    12 |    13 |    22 |    27 |  15 |  29 |  37 |   25 |  11 |    8 |    3 |  44 |
+| 23:00:00 |    12 |    13 |    22 |    28 |  15 |  29 |  37 |   25 |  11 |    8 |    3 |  21 |
+| 23:30:00 |    12 |    13 |    22 |    28 |  15 |  29 |  37 |   25 |  11 |    8 |    3 |  21 |
+
