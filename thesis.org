@@ -757,7 +757,7 @@ was of \pm5.3e^{-15} and can therefore be considered equivalent.
     In Figure ref:fig:dendrogram, we can see that the regions are of high
     importance to the construction of the clusters. Although 44 clusters is
     suggested by the silhouette statistic, five cluster seem to be a clear cut.
-    For a detailed view of the 44 clusters see Appendix [[42 clusters of GCC]]. 
+    For a detailed view of the 44 clusters see Appendix [[44 clusters of GCC]]. 
     Another way to look at those clusters is by looking the first two principal
     coordinates of the distance matrix (Fig. ref:fig:pca_cluster), where the
     five clusters are again well defined. We can see that, although cluster 1
@@ -1880,7 +1880,7 @@ bibliography:ref.bib
   DM_GCC.to_csv('data/DM_GCC_37.csv')
     #+END_SRC 
     
-* 42 clusters of GCC
+* 44 clusters of GCC
   
 #+BEGIN_SRC ipython :exports results :ipyfile :results raw drawer
   import pandas as pd
