@@ -10,7 +10,6 @@ data
 data_sub
 *.zip
 ltximg
-obipy-resources
 /auto/thesis.el
 *.log
 /*.tex
