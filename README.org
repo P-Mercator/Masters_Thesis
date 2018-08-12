@@ -81,8 +81,8 @@
    of data).
 
   #+caption: Three time series clustering approaches: (a) raw-data-based, (b) feature-based, (c) model-based. citep:liao2005clustering label:fig:types_clusterTS
-  [[file:img/types_clusterTS.png]]
-   
+  [[file:./img/types_clusterTS.png]]
+
   Essentially, once the distance matrix or parameters of the time series are
   extracted, most of the static data clustering methods can be used as is.
     
